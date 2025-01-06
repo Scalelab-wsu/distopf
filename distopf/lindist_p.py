@@ -42,6 +42,7 @@ class LinDistModelP(LinDistModel):
         cap_data: pd.DataFrame = None,
         reg_data: pd.DataFrame = None,
     ):
+        DeprecationWarning("LinDistModelP is deprecated. Use LinDistModelPFast instead.")
         super().__init__(
             branch_data, bus_data, gen_data, cap_data=cap_data, reg_data=reg_data
         )
