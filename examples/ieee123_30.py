@@ -10,7 +10,7 @@ case = opf.DistOPFCase(
     v_min=0.95,
 )
 
-model = opf.LinDistModelQ(
+model = opf.LinDistModel(
     branch_data=case.branch_data,
     bus_data=case.bus_data,
     gen_data=case.gen_data,
@@ -23,10 +23,10 @@ result = opf.lp_solve(model, np.zeros(model.n_x))
 print(result.fun)
 v = model.get_voltages(result.x)
 s = model.get_apparent_power_flows(result.x)
-dec_var = model.get_decision_variables(result.x)
-fig = opf.plot_network(model, v, s, dec_var, "Q").show(renderer="browser")
-opf.plot_voltages(v).show(renderer="browser")
-opf.plot_power_flows(s).show(renderer="browser")
+qg = model.get_q_gens(result.x)
+fig = opf.plot_network(model, v, s, q_gen=qg).show()
+opf.plot_voltages(v).show()
+opf.plot_power_flows(s).show()
 
 fig.write_image("123_plot.pdf", format="pdf", width=1000, height=1000)
 import time

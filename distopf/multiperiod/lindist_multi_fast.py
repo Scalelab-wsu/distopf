@@ -848,9 +848,7 @@ class LinDistModelMultiFast:
         # ########## Aineq and Bineq Formation ###########
         n_inequalities = 6
         n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
-            + len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
-            + len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
+            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         ) * self.n_steps
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
@@ -905,9 +903,7 @@ class LinDistModelMultiFast:
         n_inequalities = 5
 
         n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
-            + len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
-            + len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
+            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         ) * self.n_steps
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)

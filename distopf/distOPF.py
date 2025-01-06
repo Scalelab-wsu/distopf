@@ -8,7 +8,12 @@ import json
 import pandas as pd
 import numpy as np
 
-from distopf import DSSParser, CASES_DIR, LinDistModel, LinDistModelP, LinDistModelQ
+from distopf import DSSParser, CASES_DIR, LinDistModel, LinDistModelCapMI, LinDistModelCapacitorRegulatorMI
+from distopf.lindist_p_fast import LinDistModelPFast
+from distopf.lindist_q_fast import LinDistModelQFast
+from distopf.lindist_fast import LinDistModelFast
+from distopf.lindist_capacitor_mi import LinDistModelCapMI
+from distopf.lindist_capacitor_regulator_mi import LinDistModelCapacitorRegulatorMI
 from distopf.opf_solver import (
     cp_obj_loss,
     cp_obj_curtail,
@@ -31,12 +36,18 @@ from distopf.lindist_base import (
 )
 
 
-def create_model(control_variable: str = "", **kwargs) -> LinDistModel:
+def create_model(
+        control_variable: str = "",
+        control_regulators: bool = False,
+        control_capacitors: bool = False,
+        **kwargs) -> LinDistModelCapMI | LinDistModelCapacitorRegulatorMI | LinDistModel | LinDistModelPFast | LinDistModelQFast | LinDistModelFast:
     """
     Create the correct LinDistModel object based on the control variable.
     Parameters
     ----------
     control_variable : str, optional : No Control Variables-None, Active Power Control-'p', Reactive Power Control-'q'
+    control_regulators : bool, optional : Default False, if true use mixed integer control of regulators
+    control_capacitors : bool, optional : Default False, if true use mixed integer control of capacitors
     kwargs :
         branch_data : pd.DataFrame
             DataFrame containing branch data (r and x values, limits)
@@ -52,13 +63,19 @@ def create_model(control_variable: str = "", **kwargs) -> LinDistModel:
     -------
     model: LinDistModel, or LinDistModelP, or LinDistModelQ object appropriate for the control variable
     """
-    if control_variable is None or control_variable == "":
-        return LinDistModel(**kwargs)
-    if control_variable.lower() == "p":
-        return LinDistModelP(**kwargs)
-    if control_variable.lower() == "q":
-        return LinDistModelQ(**kwargs)
 
+    if control_capacitors and not control_regulators:
+        return LinDistModelCapMI(**kwargs)
+    if control_regulators:
+        return LinDistModelCapacitorRegulatorMI(**kwargs)
+    if control_variable is None or control_variable == "":
+        return LinDistModelFast(**kwargs)
+    if control_variable.upper() == "P":
+        return LinDistModelPFast(**kwargs)
+    if control_variable.upper() == "Q":
+        return LinDistModelQFast(**kwargs)
+    if control_variable.upper() == "PQ":
+        return LinDistModelFast(**kwargs)
     raise ValueError(
         f"Unknown control variable '{control_variable}'. Valid options are 'P', 'Q' or None"
     )
@@ -94,7 +111,7 @@ def auto_solve(model, objective_function=None, **kwargs):
     if isinstance(objective_function, (np.ndarray, list)):
         return lp_solve(model, objective_function)
     if not isinstance(objective_function, str):
-        raise TypeError("objective_function must be a function handle or a string")
+        raise TypeError("objective_function must be a function handle, array, or string")
     if objective_function.lower() == "gen_max":
         return lp_solve(model, gradient_curtail(model))
     if objective_function.lower() == "load_min":
@@ -264,7 +281,9 @@ class DistOPFCase(object):
         self.gen_mult = kwargs.get("gen_mult")
         self.load_mult = kwargs.get("load_mult")
 
-        self.control_variable = kwargs.get("control_variable", "")
+        self.control_variable = kwargs.get("control_variable")
+        self.control_regulators = kwargs.get("control_regulators", False)
+        self.control_capacitors = kwargs.get("control_capacitors", False)
         self.objective_function = kwargs.get("objective_function")
         self.target = kwargs.get("target")
         self.error_percent = kwargs.get("error_percent")
@@ -312,6 +331,15 @@ class DistOPFCase(object):
             self.gen_data.loc[:, ["pa", "pb", "pc"]] *= self.gen_mult
             self.gen_data.loc[:, ["qa", "qb", "qc"]] *= self.gen_mult
             self.gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= self.gen_mult
+        if self.control_variable is not None and self.gen_data is not None:
+            if self.control_variable == "":
+                self.gen_data.control_variable = "P"
+            if self.control_variable.upper() == "P":
+                self.gen_data.control_variable = "P"
+            if self.control_variable.upper() == "Q":
+                self.gen_data.control_variable = "Q"
+            if self.control_variable.upper() == "PQ":
+                self.gen_data.control_variable = "PQ"
         if self.load_mult is not None:
             self.bus_data.loc[
                 :, ["pl_a", "ql_a", "pl_b", "ql_b", "pl_c", "ql_c"]
@@ -330,6 +358,8 @@ class DistOPFCase(object):
         self.voltages_df = None
         self.power_flows_df = None
         self.decision_variables_df = None
+        self.p_gens = None
+        self.q_gens = None
 
     def run_pf(self, raw_result=False):
         """
@@ -342,10 +372,11 @@ class DistOPFCase(object):
         bus_data = self.bus_data.copy()
         bus_data.loc[:, "v_min"] = 0.0
         bus_data.loc[:, "v_max"] = 2.0
-        gen_data = self.gen_data.copy()
-        gen_data.a_mode = "CONSTANT_PQ"
-        gen_data.b_mode = "CONSTANT_PQ"
-        gen_data.c_mode = "CONSTANT_PQ"
+        if self.gen_data is not None:
+            gen_data = self.gen_data.copy()
+            gen_data.control_variable = ""
+        else:
+            gen_data = None
         # Create model
         self.model = create_model(
             "",
@@ -423,9 +454,9 @@ class DistOPFCase(object):
                 fig2.write_html(self.output_dir / "power_flow_plot.html")
                 fig3.write_html(self.output_dir / "voltage_plot.html")
             if self.show_plots:
-                fig1.show(renderer="browser")
-                fig2.show(renderer="browser")
-                fig3.show(renderer="browser")
+                fig1.show()
+                fig2.show()
+                fig3.show()
         return self.voltages_df, self.power_flows_df
 
     def run(self, raw_result=False):
@@ -459,13 +490,15 @@ class DistOPFCase(object):
 
         self.voltages_df = self.model.get_voltages(result.x)
         self.power_flows_df = self.model.get_apparent_power_flows(result.x)
-        self.decision_variables_df = self.model.get_decision_variables(result.x)
+        self.p_gens = self.model.get_p_gens(result.x)
+        self.q_gens = self.model.get_q_gens(result.x)
         fig1 = plot_network(
             self.model, self.voltages_df, self.power_flows_df, show_reactive_power=False
         )
         fig2 = plot_power_flows(self.power_flows_df)
         fig3 = plot_voltages(self.voltages_df)
-        fig4 = plot_ders(self.decision_variables_df)
+        fig4 = plot_ders(self.p_gens)
+        fig5 = plot_ders(self.q_gens)
 
         if self.save_inputs:
             config_parameters = {
@@ -506,19 +539,24 @@ class DistOPFCase(object):
             self.power_flows_df.to_csv(
                 Path(self.output_dir) / "power_flows.csv", index=False
             )
-            self.decision_variables_df.to_csv(
-                Path(self.output_dir) / "decision_variables.csv", index=False
+            self.p_gens.to_csv(
+                Path(self.output_dir) / "p_gens.csv", index=False
+            )
+            self.q_gens.to_csv(
+                Path(self.output_dir) / "q_gens.csv", index=False
             )
         if self.save_plots:
             fig1.write_html(self.output_dir / "network_plot.html")
             fig2.write_html(self.output_dir / "power_flow_plot.html")
             fig3.write_html(self.output_dir / "voltage_plot.html")
-            fig4.write_html(self.output_dir / "decision_variable_plot.html")
+            fig4.write_html(self.output_dir / "p_gens.html")
+            fig5.write_html(self.output_dir / "q_gens.html")
         if self.show_plots:
-            fig1.show(renderer="browser")
-            fig2.show(renderer="browser")
-            fig3.show(renderer="browser")
-            fig4.show(renderer="browser")
+            fig1.show()
+            fig2.show()
+            fig3.show()
+            fig4.show()
+            fig5.show()
         return self.voltages_df, self.power_flows_df, self.decision_variables_df
 
     def plot_network(
@@ -545,8 +583,8 @@ class DistOPFCase(object):
             self.model,
             v=self.voltages_df,
             s=self.power_flows_df,
-            control_values=self.decision_variables_df,
-            control_variable=self.control_variable,
+            p_gen=self.p_gens,
+            q_gen=self.q_gens,
             v_min=v_min,
             v_max=v_max,
             show_phases=show_phases,

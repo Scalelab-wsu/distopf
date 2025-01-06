@@ -149,9 +149,7 @@ class TestModular(unittest.TestCase):
             bus_data.v_a = 1.0
             bus_data.v_b = 1.0
             bus_data.v_c = 1.0
-            gen_data.a_mode = "CONSTANT_Q"
-            gen_data.b_mode = "CONSTANT_Q"
-            gen_data.c_mode = "CONSTANT_Q"
+            gen_data.control_variable = opf.CONSTANT_Q
             m1 = LinDistModelMulti(
                 branch_data=branch_data,
                 bus_data=bus_data,

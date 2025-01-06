@@ -144,9 +144,7 @@ class LinDistModelCapacitorRegulatorMI(opf.LinDistModelCapMI):
         bus_data.loc[:, "v_min"] = 0.0
         bus_data.loc[:, "v_max"] = 2.0
         gen_data = gen_data.copy()
-        gen_data.a_mode = "CONSTANT_PQ"
-        gen_data.b_mode = "CONSTANT_PQ"
-        gen_data.c_mode = "CONSTANT_PQ"
+        gen_data.control_variable = opf.CONSTANT_PQ
         m0 = cls(
             branch_data=branch_data,
             bus_data=bus_data,

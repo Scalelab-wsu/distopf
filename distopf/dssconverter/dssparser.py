@@ -214,8 +214,10 @@ class DSSParser:
             self.dss.Circuit.SetActiveBus(bus2)
 
             each_power = dict(
-                fb=bus1,
-                tb=bus2,
+                fb=self.bus_names_to_index_map[bus1],
+                tb=self.bus_names_to_index_map[bus2],
+                from_name=bus1,
+                to_name=bus2,
                 a=s_out[0],
                 b=s_out[1],
                 c=s_out[2],
@@ -226,13 +228,16 @@ class DSSParser:
 
         # combine lines between identical buses.
         power_df = pd.DataFrame(power_data)
+        power_df.fb = power_df.fb.astype(int)
+        power_df.tb = power_df.tb.astype(int)
         power_df = (
             power_df.groupby(by=["fb", "tb"], as_index=False)
-            .agg({"fb": "first", "tb": "first", "a": "sum", "b": "sum", "c": "sum"})
+            .agg({"fb": "first", "tb": "first", "from_name": "first", "to_name": "first", "a": "sum", "b": "sum", "c": "sum"})
             .reset_index(drop=True)
             .sort_values(by=["fb"], ignore_index=True)
             .sort_values(by=["tb"], ignore_index=True)
         )
+
 
         return power_df
 

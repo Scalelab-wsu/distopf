@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 from distopf import LinDistModel
 
 
+
 def plot_voltages(v: pd.DataFrame = None) -> go.Figure:
     """
     Parameters
@@ -22,9 +23,14 @@ def plot_voltages(v: pd.DataFrame = None) -> go.Figure:
     fig : Plotly figure object
         Plotly figure object containing the voltage magnitudes for each bus.
     """
+    if "id" not in v.columns:
+        v["id"] = v.index
+    if "name" not in v.columns:
+        v["name"] = v["id"]
     v = v.melt(
         ignore_index=False, id_vars=["id", "name"], var_name="phase", value_name="v"
     )
+    v["v"] = v["v"].astype(float)
     fig = px.scatter(v, x=v.name, y="v", facet_col="phase", color="phase")
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1].upper()))
     fig.for_each_xaxis(lambda a: a.update(title="Bus Name"))
@@ -43,12 +49,22 @@ def compare_voltages(v1: pd.DataFrame, v2: pd.DataFrame) -> go.Figure:
     -------
     fig : Plotly figure object
     """
+    if "id" not in v1.columns:
+        v1["id"] = v1.index
+    if "name" not in v1.columns:
+        v1["name"] = v1["id"]
+    if "id" not in v2.columns:
+        v2["id"] = v2.index
+    if "name" not in v2.columns:
+        v2["name"] = v2["id"]
     v1 = v1.melt(
         ignore_index=True, var_name="phase", id_vars=["id", "name"], value_name="v1"
     )
     v2 = v2.melt(
         ignore_index=True, var_name="phase", id_vars=["id", "name"], value_name="v2"
     )
+    v1["v1"] = v1["v1"].astype(float)
+    v2["v2"] = v2["v2"].astype(float)
     v = pd.merge(v1, v2, on=["name", "phase"])
     fig = px.line(v, x="name", facet_col="phase", y=["v1", "v2"], markers=True)
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1].upper()))
@@ -147,6 +163,16 @@ def compare_flows(s1: pd.DataFrame, s2: pd.DataFrame) -> go.Figure:
     -------
     fig : Plotly figure object
     """
+    if "from_name" not in s1.columns:
+        s1["from_name"] = s1.fb
+    if "to_name" not in s1.columns:
+        s1["to_name"] = s1.tb
+    if "from_name" not in s2.columns:
+        s2["from_name"] = s2.fb
+    if "to_name" not in s2.columns:
+        s2["to_name"] = s2.tb
+
+
     s1 = s1.melt(
         ignore_index=True,
         id_vars=["fb", "tb", "from_name", "to_name"],

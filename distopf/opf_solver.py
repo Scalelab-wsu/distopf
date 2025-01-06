@@ -28,7 +28,7 @@ def gradient_load_min(model: LinDistModel) -> np.ndarray:
     c = np.zeros(model.n_x)
     for ph in "abc":
         if model.phase_exists(ph):
-            c[model.branches_out_of_j("pij", 0, ph)] = 1
+            c[model.idx("pij", ph, model.swing_bus)] = 1
     return c
 
 
@@ -385,9 +385,7 @@ def cvxpy_solve(
     if m.a_ub is not None and m.b_ub is not None:
         if m.a_ub.shape[0] != 0 and m.a_ub.shape[1] != 0:
             g_inequality = [m.a_ub @ x - m.b_ub <= 0]
-    error_percent = kwargs.get("error_percent", np.zeros(3))
-    target = kwargs.get("target", None)
-    expression = obj_func(m, x, target=target, error_percent=error_percent)
+    expression = obj_func(m, x, **kwargs)
     prob = cp.Problem(cp.Minimize(expression), g + g_inequality + ub + lb)
     prob.solve(verbose=False, solver=solver)
 
@@ -529,3 +527,57 @@ def lp_solve(model: LinDistModel, c: np.ndarray = None) -> OptimizeResult:
     runtime = perf_counter() - tic
     res["runtime"] = runtime
     return res
+
+def pyomo_solve(
+    model: LinDistModel,
+    obj_func: Callable,
+    **kwargs,
+) -> OptimizeResult:
+    import pyomo.environ as pe
+    m = model
+    tic = perf_counter()
+    solver = kwargs.get("solver", "ipopt")
+    x0 = kwargs.get("x0", None)
+    if x0 is None:
+        lin_res = lp_solve(m, np.zeros(m.n_x))
+        if not lin_res.success:
+            raise ValueError(lin_res.message)
+        x0 = lin_res.x.copy()
+
+    cm = pe.ConcreteModel()
+    cm.n_xk = pe.RangeSet(0, model.n_x - 1)
+    cm.xk = pe.Var(cm.n_xk)
+    cm.constraints = pe.ConstraintList()
+    for i in range(model.n_x):
+        cm.constraints.add(cm.xk[i] <= model.x_max[i])
+        cm.constraints.add(cm.xk[i] >= model.x_min[i])
+
+    def equality_rule(_cm, i):
+        if model.a_eq[[i], :].nnz > 0:
+            return model.b_eq[i] == sum(_cm.xk[j]*model.a_eq[i, j] for j in range(model.n_x) if model.a_eq[i, j])
+        return pe.Constraint.Skip
+    def inequality_rule(_cm, i):
+        if model.a_ub[[i], :].nnz > 0:
+            return model.b_ub[i] >= sum(_cm.xk[j]*model.a_ub[i, j] for j in range(model.n_x) if model.a_ub[i, j])
+        return pe.Constraint.Skip
+    cm.equality = pe.Constraint(cm.n_xk, rule=equality_rule)
+    if model.a_ub.shape[0] != 0:
+        cm.ineq_set = pe.RangeSet(0, model.a_ub.shape[0] - 1)
+        cm.inequality = pe.Constraint(cm.ineq_set, rule=inequality_rule)
+    cm.objective = pe.Objective(expr=obj_func)
+    pe.SolverFactory(solver).solve(cm)
+
+    x_dict = cm.xk.extract_values()
+    x_res = np.zeros(len(x_dict))
+    for key, value in x_dict.items():
+        x_res[key] = value
+
+    result = OptimizeResult(
+        fun=float(pe.value(cm.objective)),
+        # success=(prob.status == "optimal"),
+        # message=prob.status,
+        x=x_res,
+        # nit=prob.solver_stats.num_iters,
+        runtime=perf_counter() - tic,
+    )
+    return result

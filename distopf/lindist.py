@@ -1,130 +1,18 @@
 from functools import cache
-
 import networkx as nx
 import numpy as np
 import pandas as pd
 from numpy import sqrt, zeros
-from scipy.sparse import csr_array, vstack
+from scipy.sparse import csr_array
 import distopf as opf
-
-
-def get(s: pd.Series, i, default=None):
-    """
-    Get value at index i from a Series. Return default if it does not exist.
-    Parameters
-    ----------
-    s : pd.Series
-    i : index or key for eries
-    default : value to return if it fails
-
-    Returns
-    -------
-    value: value at index i or default if it doesn't exist.
-    """
-    try:
-        return s.loc[i]
-    except (KeyError, ValueError, IndexError):
-        return default
-
-
-def _handle_gen_input(gen_data: pd.DataFrame) -> pd.DataFrame:
-    if gen_data is None:
-        return pd.DataFrame(
-            columns=[
-                "id",
-                "name",
-                "pa",
-                "pb",
-                "pc",
-                "qa",
-                "qb",
-                "qc",
-                "sa_max",
-                "sb_max",
-                "sc_max",
-                "phases",
-                "qa_max",
-                "qb_max",
-                "qc_max",
-                "qa_min",
-                "qb_min",
-                "qc_min",
-                "a_mode",
-                "b_mode",
-                "c_mode",
-            ]
-        )
-    for ph in "abc":
-        if f"{ph}_mode" not in gen_data.columns:
-            gen_data[f"{ph}_mode"] = 0
-    gen = gen_data.sort_values(by="id", ignore_index=True)
-    gen.index = gen.id.to_numpy() - 1
-    return gen
-
-
-def _handle_cap_input(cap_data: pd.DataFrame) -> pd.DataFrame:
-    if cap_data is None:
-        return pd.DataFrame(
-            columns=[
-                "id",
-                "name",
-                "qa",
-                "qb",
-                "qc",
-                "phases",
-            ]
-        )
-    cap = cap_data.sort_values(by="id", ignore_index=True)
-    cap.index = cap.id.to_numpy() - 1
-    return cap
-
-
-def _handle_reg_input(reg_data: pd.DataFrame) -> pd.DataFrame:
-    if reg_data is None:
-        return pd.DataFrame(
-            columns=[
-                "fb",
-                "tb",
-                "phases",
-                "tap_a",
-                "tap_b",
-                "tap_c",
-                "ratio_a",
-                "ratio_b",
-                "ratio_c",
-            ]
-        )
-    reg = reg_data.sort_values(by="tb", ignore_index=True)
-    reg.index = reg.tb.to_numpy() - 1
-    for ph in "abc":
-        if f"tap_{ph}" in reg.columns and not f"ratio_{ph}" in reg.columns:
-            reg[f"ratio_{ph}"] = 1 + 0.00625 * reg[f"tap_{ph}"]
-        elif f"ratio_{ph}" in reg.columns and not f"tap_{ph}" in reg.columns:
-            reg[f"tap_{ph}"] = (reg[f"ratio_{ph}"] - 1) / 0.00625
-        elif f"ratio_{ph}" in reg.columns and f"tap_{ph}" in reg.columns:
-            reg[f"ratio_{ph}"] = 1 + 0.00625 * reg[f"tap_{ph}"]
-            # check consistency
-            # if any(abs(reg[f"ratio_{ph}"]) - (1 + 0.00625 * reg[f"tap_{ph}"]) > 1e-6):
-            #     raise ValueError(
-            #         f"Regulator taps and ratio are inconsistent on phase {ph}!"
-            #     )
-    return reg
-
-
-def _handle_branch_input(branch_data: pd.DataFrame) -> pd.DataFrame:
-    if branch_data is None:
-        raise ValueError("Branch data must be provided.")
-    branch = branch_data.sort_values(by="tb", ignore_index=True)
-    branch = branch.loc[branch.status != "OPEN", :]
-    return branch
-
-
-def _handle_bus_input(bus_data: pd.DataFrame) -> pd.DataFrame:
-    if bus_data is None:
-        raise ValueError("Bus data must be provided.")
-    bus = bus_data.sort_values(by="id", ignore_index=True)
-    bus.index = bus.id.to_numpy() - 1
-    return bus
+from distopf.utils import (
+    handle_branch_input,
+    handle_bus_input,
+    handle_gen_input,
+    handle_cap_input,
+    handle_reg_input,
+    get,
+)
 
 
 class LinDistModel:
@@ -155,11 +43,11 @@ class LinDistModel:
         reg_data: pd.DataFrame = None,
     ):
         # ~~~~~~~~~~~~~~~~~~~~ Load Data Frames ~~~~~~~~~~~~~~~~~~~~
-        self.branch = _handle_branch_input(branch_data)
-        self.bus = _handle_bus_input(bus_data)
-        self.gen = _handle_gen_input(gen_data)
-        self.cap = _handle_cap_input(cap_data)
-        self.reg = _handle_reg_input(reg_data)
+        self.branch = handle_branch_input(branch_data)
+        self.bus = handle_bus_input(bus_data)
+        self.gen = handle_gen_input(gen_data)
+        self.cap = handle_cap_input(cap_data)
+        self.reg = handle_reg_input(reg_data)
 
         # ~~~~~~~~~~~~~~~~~~~~ prepare data ~~~~~~~~~~~~~~~~~~~~
         self.nb = len(self.bus.id)
@@ -344,14 +232,14 @@ class LinDistModel:
         for a in "abc":
             if not self.phase_exists(a):
                 continue
-            q_max_manual = self.gen[f"q{a}_max"]
-            q_min_manual = self.gen[f"q{a}_min"]
             s_rated = self.gen[f"s{a}_max"]
             p_out = self.gen[f"p{a}"]
             q_min = -1 * (((s_rated**2) - (p_out**2)) ** (1 / 2))
             q_max = ((s_rated**2) - (p_out**2)) ** (1 / 2)
+            q_max_manual = self.gen.get(f"q{a}_max", np.ones_like(q_min)*100e3)
+            q_min_manual = self.gen.get(f"q{a}_min", np.ones_like(q_min)*-100e3)
             for j in self.gen_buses[a]:
-                mode = self.gen.loc[j, f"{a}_mode"]
+                mode = self.gen.loc[j, f"control_variable"]
                 pg = self.idx("pg", j, a)
                 qg = self.idx("qg", j, a)
                 # active power bounds
@@ -499,7 +387,6 @@ class LinDistModel:
             a_eq[vj, qijc] = -x[ac][i, j] + sqrt(3) * r[ac][i, j]
         return a_eq, b_eq
 
-
     def add_regulator_model(self, a_eq, b_eq, j, a):
         i = self.idx("bi", j, a)[0]  # get the upstream node, i, on branch from i to j
         vi = self.idx("v", i, a)
@@ -532,10 +419,10 @@ class LinDistModel:
         pg = self.idx("pg", j, a)
         qg = self.idx("qg", j, a)
         # Set Generator equation variable coefficients in a_eq
-        if get(self.gen[f"{a}_mode"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_P]:
+        if get(self.gen[f"control_variable"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_P]:
             a_eq[pg, pg] = 1
             b_eq[pg] = p_gen_nom
-        if get(self.gen[f"{a}_mode"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_Q]:
+        if get(self.gen[f"control_variable"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_Q]:
             a_eq[qg, qg] = 1
             b_eq[qg] = q_gen_nom
         return a_eq, b_eq
@@ -581,9 +468,7 @@ class LinDistModel:
         # ########## Aineq and Bineq Formation ###########
         n_inequalities = 6
         n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
-            + len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
-            + len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
+            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
@@ -599,7 +484,7 @@ class LinDistModel:
             for a in "abc":
                 if not self.phase_exists(a, j):
                     continue
-                if self.gen.loc[j, f"{a}_mode"] != "CONTROL_PQ":
+                if self.gen.loc[j, f"control_variable"] != opf.CONTROL_PQ:
                     continue
                 pg = self.idx("pg", j, a)
                 qg = self.idx("qg", j, a)
@@ -639,9 +524,7 @@ class LinDistModel:
         n_inequalities = 5
 
         n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
-            + len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
-            + len(np.where(self.gen.a_mode == "CONTROL_PQ")[0])
+            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
@@ -656,7 +539,7 @@ class LinDistModel:
             for a in "abc":
                 if not self.phase_exists(a, j):
                     continue
-                if self.gen.loc[j, f"{a}_mode"] != "CONTROL_PQ":
+                if self.gen.loc[j, f"control_variable"] != opf.CONTROL_PQ:
                     continue
                 pg = self.idx("pg", j, a)
                 qg = self.idx("qg", j, a)
