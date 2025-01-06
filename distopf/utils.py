@@ -42,14 +42,11 @@ def handle_gen_input(gen_data: pd.DataFrame) -> pd.DataFrame:
                 "qa_min",
                 "qb_min",
                 "qc_min",
-                "a_mode",
-                "b_mode",
-                "c_mode",
+                "control_variable",
             ]
         )
-    for ph in "abc":
-        if f"{ph}_mode" not in gen_data.columns:
-            gen_data[f"{ph}_mode"] = 0
+    if f"control_variable" not in gen_data.columns:
+        gen_data[f"control_variable"] = 0
     gen = gen_data.sort_values(by="id", ignore_index=True)
     gen.index = gen.id.to_numpy() - 1
     return gen
@@ -118,3 +115,64 @@ def handle_bus_input(bus_data: pd.DataFrame) -> pd.DataFrame:
     bus = bus_data.sort_values(by="id", ignore_index=True)
     bus.index = bus.id.to_numpy() - 1
     return bus
+
+
+def handle_loadshape_input(loadshape_data: pd.DataFrame) -> pd.DataFrame:
+    if loadshape_data is None:
+        return pd.DataFrame(
+            columns=[
+                "time",
+                "M",
+            ]
+        )
+    loadshape = loadshape_data.sort_values(by="time", ignore_index=True)
+    loadshape.index = loadshape.time.to_numpy()
+    return loadshape
+
+
+def handle_pv_loadshape_input(pv_loadshape_data: pd.DataFrame) -> pd.DataFrame:
+    if pv_loadshape_data is None:
+        return pd.DataFrame(
+            columns=[
+                "time",
+                "PV",
+            ]
+        )
+    pv_loadshape = pv_loadshape_data.sort_values(by="time", ignore_index=True)
+    pv_loadshape.index = pv_loadshape.time.to_numpy()
+    return pv_loadshape
+
+
+def handle_bat_input(bat_data: pd.DataFrame) -> pd.DataFrame:
+    if bat_data is None:
+        return pd.DataFrame(
+            columns=[
+                "id",
+                "name",
+                "nc_a",
+                "nc_b",
+                "nc_c",
+                "nd_a",
+                "nd_b",
+                "nd_c",
+                "hmax_a",
+                "hmax_b",
+                "hmax_c",
+                "Pb_max_a",
+                "Pb_max_b",
+                "Pb_max_c",
+                "bmin_a",
+                "bmin_b",
+                "bmin_c",
+                "bmax_a",
+                "bmax_b",
+                "bmax_c",
+                "b0_a",
+                "b0_b",
+                "b0_c",
+                "phases",
+            ]
+        )
+    bat = bat_data.sort_values(by="id", ignore_index=True)
+    bat.index = bat.id.to_numpy() - 1
+    return bat

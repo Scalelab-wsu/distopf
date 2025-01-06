@@ -173,9 +173,7 @@ class TestMulti(unittest.TestCase):
             default_loadshape = pd.read_csv(base_path / "default_loadshape.csv")
             load_mult = default_loadshape.loc[start_time, "M"]
             gen_mult = pv_loadshape.loc[start_time, "PV"]
-            gen_data["a_mode"] = opf.CONSTANT_Q
-            gen_data["b_mode"] = opf.CONSTANT_Q
-            gen_data["c_mode"] = opf.CONSTANT_Q
+            gen_data["control_variable"] = opf.CONSTANT_Q
             gen_data.pa *= 10
             gen_data.pb *= 10
             gen_data.pc *= 10

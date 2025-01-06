@@ -92,9 +92,7 @@ class TestPlots(unittest.TestCase):
             reg_data=reg_data,
             cap_data=cap_data,
         )
-        gen_data.a_mode = "CONTROL_PQ"
-        gen_data.b_mode = "CONTROL_PQ"
-        gen_data.c_mode = "CONTROL_PQ"
+        gen_data.control_variable = opf.CONTROL_PQ
         m2 = LinDistModel(
             branch_data=branch_data,
             bus_data=bus_data,
@@ -126,9 +124,7 @@ class TestPlots(unittest.TestCase):
             reg_data=reg_data,
             cap_data=cap_data,
         )
-        gen_data.a_mode = "CONTROL_PQ"
-        gen_data.b_mode = "CONTROL_PQ"
-        gen_data.c_mode = "CONTROL_PQ"
+        gen_data.control_variable = opf.CONTROL_PQ
         m2 = LinDistModel(
             branch_data=branch_data,
             bus_data=bus_data,
@@ -182,9 +178,7 @@ class TestPlots(unittest.TestCase):
             reg_data=reg_data,
             cap_data=cap_data,
         )
-        gen_data.a_mode = "CONTROL_PQ"
-        gen_data.b_mode = "CONTROL_PQ"
-        gen_data.c_mode = "CONTROL_PQ"
+        gen_data.control_variable = opf.CONTROL_PQ
         m2 = LinDistModel(
             branch_data=branch_data,
             bus_data=bus_data,

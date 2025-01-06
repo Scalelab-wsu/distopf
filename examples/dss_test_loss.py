@@ -46,7 +46,7 @@ for _dir in dirs:
             continue
         v_df = model.get_voltages(result.x)
         s_df = model.get_apparent_power_flows(result.x)
-        dec_var_df = model.get_decision_variables(result.x)
+        # dec_var_df = model.get_p_gens(result.x)
         v_diff = v_df.copy()
         v_diff.loc[:, ["a", "b", "c"]] = (
             v_df.loc[:, ["a", "b", "c"]] - dss.v_solved.loc[:, ["a", "b", "c"]].abs()
@@ -66,6 +66,6 @@ for _dir in dirs:
         )
 loss_df = pd.DataFrame(loss_list)
 fig = px.scatter(loss_df, x="%Ploss", y="%V_err", color="name")
-fig.show(renderer="browser")
+fig.show()
 fig = px.scatter(loss_df, x="%Qloss", y="%V_err", color="name")
-fig.show(renderer="browser")
+fig.show()
