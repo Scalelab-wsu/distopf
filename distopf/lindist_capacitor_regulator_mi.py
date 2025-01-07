@@ -79,7 +79,6 @@ class LinDistModelCapacitorRegulatorMI(opf.LinDistModelCapMI):
             a_eq[vj, qijc] = -x[ac][i, j] + sqrt(3) * r[ac][i, j]
         return a_eq, b_eq
 
-
     def cvxpy_regulator_mi_constraints(self):
 
         n_u_reg = (

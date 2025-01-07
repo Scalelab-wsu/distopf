@@ -5,5 +5,5 @@ case = opf.DistOPFCase(
     objective_functions=opf.cp_obj_loss,
     control_variable="PQ",
 )
-case.run()
+case.run_pf()
 case.plot_network().show()

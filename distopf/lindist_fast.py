@@ -226,12 +226,12 @@ class LinDistModelFast:
         for a in "abc":
             if not self.phase_exists(a):
                 continue
-            q_max_manual = self.gen[f"q{a}_max"]
-            q_min_manual = self.gen[f"q{a}_min"]
             s_rated = self.gen[f"s{a}_max"]
             p_out = self.gen[f"p{a}"]
             q_max = ((s_rated**2) - (p_out**2)) ** (1 / 2)
             q_min = -q_max
+            q_max_manual = self.gen.get(f"q{a}_max", np.ones_like(q_min)*100e3)
+            q_min_manual = self.gen.get(f"q{a}_min", np.ones_like(q_min)*-100e3)
             for j in self.gen_buses[a]:
                 mode = self.gen.loc[j, "control_variable"]
                 pg = self.idx("pg", j, a)
