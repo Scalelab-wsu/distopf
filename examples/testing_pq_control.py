@@ -7,12 +7,12 @@ import cvxpy as cp
 from time import perf_counter
 
 
-class Hexagon(opf.LinDistModelPQ):
+class Hexagon(opf.LinDistModel):
     def create_inequality_constraints(self):
         return self.create_hexagon_constraints()
 
 
-class Octogon(opf.LinDistModelPQ):
+class Octogon(opf.LinDistModel):
     def create_inequality_constraints(self):
         return self.create_octagon_constraints()
 
@@ -24,8 +24,9 @@ if __name__ == "__main__":
         gen_mult=6,
         load_mult=1,
         v_swing=1.0,
-        v_max=1.05,
+        v_max=1.1,
         v_min=0.95,
+        control_variable="PQ"
     )
     reg_data = pd.concat(
         [
@@ -57,9 +58,6 @@ if __name__ == "__main__":
             ),
         ]
     )
-    case.gen_data.a_mode = "CONTROL_PQ"
-    case.gen_data.b_mode = "CONTROL_PQ"
-    case.gen_data.c_mode = "CONTROL_PQ"
     case.gen_data.sa_max = case.gen_data.sa_max / 1.2
     case.gen_data.sb_max = case.gen_data.sb_max / 1.2
     case.gen_data.sc_max = case.gen_data.sc_max / 1.2
@@ -81,24 +79,13 @@ if __name__ == "__main__":
 
     result_hex = opf.cvxpy_solve(hex, opf.cp_obj_loss)
     print(f" Hexagon: objective={result_hex.fun}, time={result_hex.runtime}")
-    # v = m.get_voltages(result.x)
-    # s = m.get_apparent_power_flows(result.x)
     pg_hex = hex.get_p_gens(result_hex.x)
     qg_hex = hex.get_q_gens(result_hex.x)
-    opf.plot.plot_polar(pg_hex, qg_hex).show(renderer="browser")
+    opf.plot.plot_polar(pg_hex, qg_hex).show()
 
     result_oct = opf.cvxpy_solve(oct, opf.cp_obj_loss)
     print(f" Octogon: objective={result_oct.fun}, time={result_oct.runtime}")
     pg_oct = hex.get_p_gens(result_oct.x)
     qg_oct = hex.get_q_gens(result_oct.x)
-    opf.plot.plot_polar(pg_oct, qg_oct).show(renderer="browser")
+    opf.plot.plot_polar(pg_oct, qg_oct).show()
 
-    # dec_var = m.get_q_gens(result.x)
-    # print(result.fun)
-    # print(result.runtime)
-    # opf.plot_network(m, v, s, dec_var, "Q").show(renderer="browser")
-    # opf.plot_voltages(v).show(renderer="browser")
-    # opf.plot_power_flows(s).show(renderer="browser")
-    # opf.plot_ders(pg).show(renderer="browser")
-    # opf.plot_ders(qg).show(renderer="browser")
-    # opf.plot.plot_polar(pg, qg).show(renderer="browser")

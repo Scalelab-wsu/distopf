@@ -7,7 +7,7 @@ case = opf.DistOPFCase(
     gen_mult=1,
     load_mult=1,
     v_swing=1.0,
-    v_max=1.05,
+    v_max=1.06,
     v_min=0.95,
 )
 
@@ -23,7 +23,6 @@ result = opf.lp_solve(model, np.zeros(model.n_x))
 print(result.fun)
 v = model.get_voltages(result.x)
 s = model.get_apparent_power_flows(result.x)
-dec_var = model.get_decision_variables(result.x)
-opf.plot_network(model, v, s, dec_var, "Q").show(renderer="browser")
-opf.plot_voltages(v).show(renderer="browser")
-opf.plot_power_flows(s).show(renderer="browser")
+opf.plot_network(model, v, s).show()
+opf.plot_voltages(v).show()
+opf.plot_power_flows(s).show()

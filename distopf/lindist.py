@@ -648,7 +648,6 @@ class LinDistModel:
         if reg_data is not None:
             self.reg = reg_data
 
-
         for j in range(1, self.nb):
             for ph in ["abc", "bca", "cab"]:
                 a, b, c = ph[0], ph[1], ph[2]
@@ -663,9 +662,6 @@ class LinDistModel:
                     self._a_eq, self._b_eq = self.add_capacitor_model(self.a_eq, self.b_eq, j, a)
                 if reg_data is not None:
                     self._a_eq, self._b_eq = self.add_regulator_model(self.a_eq, self.b_eq, j, a)
-
-
-
 
     @property
     def branch_data(self):

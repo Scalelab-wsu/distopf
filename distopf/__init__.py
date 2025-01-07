@@ -27,7 +27,8 @@ from distopf.plot import (
     compare_flows,
     compare_voltages,
     voltage_differences,
-    plot_polar
+    plot_polar,
+    plot_gens
 )
 from distopf.dssconverter.dssparser import DSSParser
 

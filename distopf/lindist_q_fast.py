@@ -53,6 +53,7 @@ class LinDistModelQFast:
         # ~~~~~~~~~~~~~~~~~~~~ prepare data ~~~~~~~~~~~~~~~~~~~~
         self.nb = len(self.bus.id)
         self.r, self.x = self._init_rx(self.branch)
+        self.swing_bus = self.bus.loc[self.bus.bus_type == "SWING"].index[0]
         self.all_buses = {
             "a": self.bus.loc[self.bus.phases.str.contains("a")].index.to_numpy(),
             "b": self.bus.loc[self.bus.phases.str.contains("b")].index.to_numpy(),
@@ -227,7 +228,7 @@ class LinDistModelQFast:
             s_rated = self.gen[f"s{a}_max"]
             p_out = self.gen[f"p{a}"]
             q_max = ((s_rated**2) - (p_out**2)) ** (1 / 2)
-            q_min = -1 * q_max
+            q_min = -q_max
             q_max_manual = self.gen.get(f"q{a}_max", np.ones_like(q_min)*100e3)
             q_min_manual = self.gen.get(f"q{a}_min", np.ones_like(q_min)*-100e3)
             for j in self.gen_buses[a]:
@@ -256,11 +257,11 @@ class LinDistModelQFast:
         if var in ["qjk"]:  # indexes of all branch reactive power out of node j
             return self.branches_out_of_j("qij", node_j, phase)
         if var in ["v"]:  # active power generation at node
-            return self.v_map[phase].get(node_j, [])
+            return get(self.v_map[phase], node_j, [])
         if var in ["qg", "q_gen"]:  # reactive power generation at node
-            return self.qg_map[phase].get(node_j, [])
+            return get(self.qg_map[phase], node_j, [])
         if var in ["qc", "q_cap"]:  # reactive power injection by capacitor
-            return self.qc_map[phase].get(node_j, [])
+            return get(self.qc_map[phase], node_j, [])
         ix = self.user_added_idx(var, node_j, phase)
         if ix is not None:
             return ix
@@ -444,8 +445,12 @@ class LinDistModelQFast:
     def get_q_gens(self, x):
         return self.get_device_variables(x, self.qg_map)
 
-    # def get_p_gens(self, x):
-    #     return self.get_device_variables(x, self.pg_map)
+    def get_p_gens(self, x):
+        df = self.get_device_variables(x, self.qg_map)
+        df.a = self.gen_data.pa.to_numpy()
+        df.b = self.gen_data.pb.to_numpy()
+        df.c = self.gen_data.pc.to_numpy()
+        return df
 
     def get_q_caps(self, x):
         return self.get_device_variables(x, self.qc_map)

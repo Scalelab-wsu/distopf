@@ -151,6 +151,61 @@ def plot_power_flows(s: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def plot_gens(p_gens: pd.DataFrame, q_gens: pd.DataFrame) -> go.Figure:
+    """
+    Plot the active and reactive power flowing into each bus on each phase.
+    Parameters
+    ----------
+    p_gens : pd.DataFrame
+    q_gens : pd.DataFrame
+    Returns
+    -------
+    fig : Plotly figure object
+    """
+
+    p_gens = p_gens.melt(
+        ignore_index=True,
+        id_vars=["id", "name"],
+        var_name="phase",
+        value_name="Generated Active Power (p.u.)",
+    )
+    q_gens = q_gens.melt(
+        ignore_index=True,
+        id_vars=["id", "name"],
+        var_name="phase",
+        value_name="Generated Reactive Power (p.u.)",
+    )
+    gens = pd.merge(
+        p_gens, q_gens, how="outer", on=["id", "name", "phase"]
+    )
+    gens.id = p_gens.id
+    gens.name = p_gens.name
+    gens.phase = p_gens.phase
+    gens["Generated Active Power (p.u.)"] = p_gens["Generated Active Power (p.u.)"]
+    gens["Generated Reactive Power (p.u.)"] = q_gens["Generated Reactive Power (p.u.)"]
+    gens = gens.melt(
+        ignore_index=False,
+        id_vars=["id", "name", "phase"],
+        var_name="part",
+        value_name="power",
+    )
+    fig = px.bar(
+        gens,
+        x="name",
+        y="power",
+        facet_col="phase",
+        facet_row="part",
+        color="phase",
+        labels={"name": "Bus Name"},
+    )
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1].upper()))
+    # fig.update_layout(
+    #     yaxis4_title="Generated Active Power (p.u.)",
+    #     yaxis_title="Generated Reactive Power (p.u.)",
+    # )
+    return fig
+
+
 def compare_flows(s1: pd.DataFrame, s2: pd.DataFrame) -> go.Figure:
     """
     Similar to plot_power_flows but plots two results side by side.

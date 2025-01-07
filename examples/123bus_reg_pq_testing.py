@@ -42,9 +42,7 @@ if __name__ == "__main__":
     #         ),
     #     ]
     # )
-    case.gen_data["a_mode"] = "CONTROL_PQ"
-    case.gen_data["b_mode"] = "CONTROL_PQ"
-    case.gen_data["c_mode"] = "CONTROL_PQ"
+    case.gen_data["control_variable"] = "PQ"
     case.gen_data.sa_max = case.gen_data.sa_max / 1.2
     case.gen_data.sb_max = case.gen_data.sb_max / 1.2
     case.gen_data.sc_max = case.gen_data.sc_max / 1.2
@@ -64,9 +62,9 @@ if __name__ == "__main__":
     s = m.get_apparent_power_flows(result.x)
     pg = m.get_p_gens(result.x)
     qg = m.get_q_gens(result.x)
-    opf.plot_network(m, v, s, qg, "Q").show(renderer="browser")
-    opf.plot_voltages(v).show(renderer="browser")
-    opf.plot_power_flows(s).show(renderer="browser")
-    opf.plot_ders(pg).show(renderer="browser")
-    opf.plot_ders(qg).show(renderer="browser")
-    opf.plot.plot_polar(pg, qg).show(renderer="browser")
+    opf.plot_network(m, v=v, s=s, p_gen=pg, q_gen=qg).show()
+    opf.plot_voltages(v).show()
+    opf.plot_power_flows(s).show()
+    opf.plot_ders(pg).show()
+    opf.plot_ders(qg).show()
+    opf.plot.plot_polar(pg, qg).show()
