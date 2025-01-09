@@ -724,24 +724,24 @@ class DSSParser:
         if len(gen_data) < 1:
             gen_df = pd.DataFrame(
                 {
-                    "id": [0],
-                    "name": ["none"],
-                    "pa": [0],
-                    "pb": [0],
-                    "pc": [0],
-                    "qa": [0],
-                    "qb": [0],
-                    "qc": [0],
-                    "sa_max": [0],
-                    "sb_max": [0],
-                    "sc_max": [0],
-                    "phases": ["abc"],
-                    "qa_max": [0],
-                    "qb_max": [0],
-                    "qc_max": [0],
-                    "qa_min": [0],
-                    "qb_min": [0],
-                    "qc_min": [0],
+                    "id": [],
+                    "name": [],
+                    "pa": [],
+                    "pb": [],
+                    "pc": [],
+                    "qa": [],
+                    "qb": [],
+                    "qc": [],
+                    "sa_max": [],
+                    "sb_max": [],
+                    "sc_max": [],
+                    "phases": [],
+                    "qa_max": [],
+                    "qb_max": [],
+                    "qc_max": [],
+                    "qa_min": [],
+                    "qb_min": [],
+                    "qc_min": [],
                 }
             )
         gen_df = gen_df.groupby(by=["id"], as_index=False).agg(
@@ -822,12 +822,12 @@ class DSSParser:
         if len(cap_data) < 1:
             cap_df = pd.DataFrame(
                 {
-                    "id": [0],
-                    "name": [0],
-                    "qa": [0],
-                    "qb": [0],
-                    "qc": [0],
-                    "phases": ["abc"],
+                    "id": [],
+                    "name": [],
+                    "qa": [],
+                    "qb": [],
+                    "qc": [],
+                    "phases": [],
                 }
             )
 
@@ -891,12 +891,12 @@ class DSSParser:
         if len(reg_data) < 1:
             reg_df = pd.DataFrame(
                 {
-                    "fb": [0],
-                    "tb": [0],
-                    "ratio_a": [0],
-                    "ratio_b": [0],
-                    "ratio_c": [0],
-                    "phases": ["abc"],
+                    "fb": [],
+                    "tb": [],
+                    "ratio_a": [],
+                    "ratio_b": [],
+                    "ratio_c": [],
+                    "phases": [],
                 }
             )
         reg_df = reg_df.groupby(["fb", "tb"]).agg(

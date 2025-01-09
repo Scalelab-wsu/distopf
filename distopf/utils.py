@@ -46,7 +46,7 @@ def handle_gen_input(gen_data: pd.DataFrame) -> pd.DataFrame:
             ]
         )
     if f"control_variable" not in gen_data.columns:
-        gen_data[f"control_variable"] = 0
+        gen_data[f"control_variable"] = ""
     gen = gen_data.sort_values(by="id", ignore_index=True)
     gen.index = gen.id.to_numpy() - 1
     return gen
