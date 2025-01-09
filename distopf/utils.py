@@ -173,6 +173,12 @@ def handle_bat_input(bat_data: pd.DataFrame) -> pd.DataFrame:
                 "phases",
             ]
         )
+    if "b0_a" not in bat_data.columns:
+        bat_data["b0_a"] = bat_data.bmin_a
+    if "b0_b" not in bat_data.columns:
+        bat_data["b0_b"] = bat_data.bmin_a
+    if "b0_c" not in bat_data.columns:
+        bat_data["b0_c"] = bat_data.bmin_a
     bat = bat_data.sort_values(by="id", ignore_index=True)
     bat.index = bat.id.to_numpy() - 1
     return bat

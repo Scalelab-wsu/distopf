@@ -108,9 +108,11 @@ def auto_solve(model, objective_function=None, **kwargs):
         objective_function = np.zeros(model.n_x)
     if not isinstance(objective_function, (str, Callable, np.ndarray, list)):
         raise TypeError("objective_function must be a function handle, array, or string")
-    objective_function_map = {
-        "gen_max": gradient_curtail(model),
-        "load_min": gradient_load_min(model),
+    objective_function_map_gradient: [str, Callable] = {
+        "gen_max": gradient_curtail,
+        "load_min": gradient_load_min,
+    }
+    objective_function_map: [str, Callable] = {
         "loss_min": cp_obj_loss,
         "curtail_min": cp_obj_curtail,
         "target_p_3ph": cp_obj_target_p_3ph,
@@ -122,6 +124,8 @@ def auto_solve(model, objective_function=None, **kwargs):
         objective_function = objective_function.lower()
         if objective_function in objective_function_map.keys():
             objective_function = objective_function_map[objective_function]
+        if objective_function in objective_function_map_gradient.keys():
+            objective_function = objective_function_map[objective_function](model)
     if isinstance(objective_function, Callable):
         if hasattr(model, "solve"):
             return model.solve(objective_function, **kwargs)
@@ -420,7 +424,9 @@ class DistOPFCase(object):
             objective_function=None,
             control_regulators=False,
             control_capacitors=False,
-            raw_result=False):
+            raw_result=False,
+            **kwargs
+    ):
         """
         Run the optimization, save and plot the results.
         Returns
@@ -447,8 +453,7 @@ class DistOPFCase(object):
         result = auto_solve(
             self.model,
             self.objective_function,
-            target=self.target,
-            error_percent=self.error_percent,
+            **kwargs
         )
         if raw_result:
             return result
@@ -464,7 +469,7 @@ class DistOPFCase(object):
             self.save_result_data()
         if self.save_plots or self.show_plots:
             self.make_plots()
-        return self.voltages_df, self.power_flows_df, self.decision_variables_df
+        return self.voltages_df, self.power_flows_df, self.p_gens, self.q_gens
 
     def save_result_data(self):
         if not self.output_dir.exists():
