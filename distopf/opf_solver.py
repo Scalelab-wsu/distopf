@@ -12,7 +12,7 @@ from distopf import (
 )
 
 
-def gradient_load_min(model: LinDistModel) -> np.ndarray:
+def gradient_load_min(model: LinDistModel, *args, **kwargs) -> np.ndarray:
     """
     Gradient of the objective function to minimize the load at the substation.
     c has a 1 for each active power flow out of the substation.
@@ -32,7 +32,7 @@ def gradient_load_min(model: LinDistModel) -> np.ndarray:
     return c
 
 
-def gradient_curtail(model: LinDistModel) -> np.ndarray:
+def gradient_curtail(model: LinDistModel, *args, **kwargs) -> np.ndarray:
     """
     Gradient of the objective function to minimize curtailment of DERs.
     Parameters
@@ -467,7 +467,11 @@ def pf(model) -> OptimizeResult:
     return res
 
 
-def lp_solve(model: LinDistModel, c: np.ndarray = None) -> OptimizeResult:
+def lp_solve(
+    model: LinDistModel,
+    c: np.ndarray | Callable = None,
+    **kwargs,
+) -> OptimizeResult:
     """
     Solve a linear program using scipy.optimize.linprog and having the objective function:
         Min c^T x
@@ -516,6 +520,8 @@ def lp_solve(model: LinDistModel, c: np.ndarray = None) -> OptimizeResult:
         message : str
             A string descriptor of the exit status of the algorithm.
     """
+    if isinstance(c, Callable):
+        c = c(model)
     if c is None:
         c = np.zeros(model.n_x)
     tic = perf_counter()

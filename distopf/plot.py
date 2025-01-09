@@ -63,10 +63,14 @@ def compare_voltages(v1: pd.DataFrame, v2: pd.DataFrame) -> go.Figure:
     v2 = v2.melt(
         ignore_index=True, var_name="phase", id_vars=["id", "name"], value_name="v2"
     )
-    v1["v1"] = v1["v1"].astype(float)
-    v2["v2"] = v2["v2"].astype(float)
-    v = pd.merge(v1, v2, on=["name", "phase"])
-    fig = px.line(v, x="name", facet_col="phase", y=["v1", "v2"], markers=True)
+    v = pd.merge(v1, v2, on=["id", "name", "phase"])
+    v = v.melt(
+        ignore_index=True, var_name="value", id_vars=["id", "name", "phase"], value_name="v"
+    )
+    # v1["v1"] = v1["v1"].astype(float)
+    # v2["v2"] = v2["v2"].astype(float)
+    # v = pd.merge(v1, v2, on=["name", "phase"])
+    fig = px.line(v, x="name", facet_col="phase", y="v", color="value", markers=True)
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1].upper()))
     fig.for_each_xaxis(lambda a: a.update(title="Bus Name"))
     return fig
@@ -84,8 +88,14 @@ def voltage_differences(v1: pd.DataFrame, v2: pd.DataFrame) -> go.Figure:
     -------
     fig : Plotly figure object
     """
-    v1["id"] = v1.index
-    v2["id"] = v2.index
+    if "id" not in v1.columns:
+        v1["id"] = v1.index
+    if "name" not in v1.columns:
+        v1["name"] = v1["id"]
+    if "id" not in v2.columns:
+        v2["id"] = v2.index
+    if "name" not in v2.columns:
+        v2["name"] = v2["id"]
     v1 = v1.melt(
         ignore_index=True, var_name="phase", id_vars=["id", "name"], value_name="v1"
     )
@@ -167,13 +177,13 @@ def plot_gens(p_gens: pd.DataFrame, q_gens: pd.DataFrame) -> go.Figure:
         ignore_index=True,
         id_vars=["id", "name"],
         var_name="phase",
-        value_name="Generated Active Power (p.u.)",
+        value_name="P",
     )
     q_gens = q_gens.melt(
         ignore_index=True,
         id_vars=["id", "name"],
         var_name="phase",
-        value_name="Generated Reactive Power (p.u.)",
+        value_name="Q",
     )
     gens = pd.merge(
         p_gens, q_gens, how="outer", on=["id", "name", "phase"]
@@ -181,8 +191,8 @@ def plot_gens(p_gens: pd.DataFrame, q_gens: pd.DataFrame) -> go.Figure:
     gens.id = p_gens.id
     gens.name = p_gens.name
     gens.phase = p_gens.phase
-    gens["Generated Active Power (p.u.)"] = p_gens["Generated Active Power (p.u.)"]
-    gens["Generated Reactive Power (p.u.)"] = q_gens["Generated Reactive Power (p.u.)"]
+    gens["P"] = p_gens["P"]
+    gens["Q"] = q_gens["Q"]
     gens = gens.melt(
         ignore_index=False,
         id_vars=["id", "name", "phase"],
@@ -199,10 +209,10 @@ def plot_gens(p_gens: pd.DataFrame, q_gens: pd.DataFrame) -> go.Figure:
         labels={"name": "Bus Name"},
     )
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1].upper()))
-    # fig.update_layout(
-    #     yaxis4_title="Generated Active Power (p.u.)",
-    #     yaxis_title="Generated Reactive Power (p.u.)",
-    # )
+    fig.update_layout(
+        yaxis4_title="Active Power (p.u.)",
+        yaxis_title="Reactive Power (p.u.)",
+    )
     return fig
 
 
