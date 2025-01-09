@@ -241,7 +241,7 @@ class LinDistModelMultiFast:
         self.start_step = start_step
         self.n_steps = n_steps
         self.delta_t = delta_t
-        self.SWING = self.bus.loc[self.bus.bus_type == "SWING", "id"].to_numpy()[0] - 1
+        self.swing_bus = self.bus.loc[self.bus.bus_type == "SWING", "id"].to_numpy()[0] - 1
 
         # ~~~~~~~~~~~~~~~~~~~~ prepare data ~~~~~~~~~~~~~~~~~~~~
         self.nb = len(self.bus.id)
@@ -251,6 +251,12 @@ class LinDistModelMultiFast:
             "b": self.bus.loc[self.bus.phases.str.contains("b")].index.to_numpy(),
             "c": self.bus.loc[self.bus.phases.str.contains("c")].index.to_numpy(),
         }
+        self.load_buses = {
+            "a": self.all_buses["a"][np.where(self.all_buses["a"] != self.swing_bus)],
+            "b": self.all_buses["b"][np.where(self.all_buses["b"] != self.swing_bus)],
+            "c": self.all_buses["c"][np.where(self.all_buses["c"] != self.swing_bus)],
+        }
+
         self.gen_buses = dict(a=np.array([]), b=np.array([]), c=np.array([]))
         if self.gen.shape[0] > 0:
             self.gen_buses = {
@@ -498,7 +504,7 @@ class LinDistModelMultiFast:
     def add_generator_limits(self, x_lim_lower, x_lim_upper, t=0):
         if t < self.start_step:
             t = self.start_step
-        gen_mult = self.pv_loadshape.PV[t]
+        gen_mult = self.pv_loadshape.PV.get(t, 1)
         for a in "abc":
             if not self.phase_exists(a):
                 continue
@@ -509,7 +515,7 @@ class LinDistModelMultiFast:
             q_max = ((s_rated**2) - ((p_out*gen_mult)**2)) ** (1 / 2)
             q_min = -q_max
             for j in self.gen_buses[a]:
-                mode = self.gen.loc[j, f"{a}_mode"]
+                mode = self.gen.loc[j, f"control_variable"]
                 pg = self.idx("pg", j, a, t)
                 qg = self.idx("qg", j, a, t)
                 # active power bounds
@@ -749,7 +755,7 @@ class LinDistModelMultiFast:
             t = self.start_step
         a = phase
         p_gen_nom, q_gen_nom = 0, 0
-        pv_mult = self.pv_loadshape.PV[t]
+        pv_mult = self.pv_loadshape.PV.get(t, 1)
         if self.gen is not None:
             p_gen_nom = get(self.gen[f"p{a}"], j, 0)
             q_gen_nom = get(self.gen[f"q{a}"], j, 0)
@@ -757,10 +763,10 @@ class LinDistModelMultiFast:
         pg = self.idx("pg", j, a, t=t)
         qg = self.idx("qg", j, a, t=t)
         # Set Generator equation variable coefficients in a_eq
-        if get(self.gen[f"{a}_mode"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_P]:
+        if get(self.gen["control_variable"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_P]:
             a_eq[pg, pg] = 1
             b_eq[pg] = p_gen_nom*pv_mult
-        if get(self.gen[f"{a}_mode"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_Q]:
+        if get(self.gen["control_variable"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_Q]:
             a_eq[qg, qg] = 1
             b_eq[qg] = q_gen_nom
         return a_eq, b_eq
@@ -800,14 +806,16 @@ class LinDistModelMultiFast:
         return a_eq, b_eq
 
     def add_battery_model(self, a_eq, b_eq, j, phase, t=0):
+        if j not in self.bat.index:
+            return a_eq, b_eq
         if t < self.start_step:
             t = self.start_step
         soc_j = self.idx("soc", j, phase, t=t)
         discharge_j = self.idx("discharge", j, phase, t=t)
         charge_j = self.idx("charge", j, phase, t=t)
-        nc = self.bat[f"nc_{phase}"].get(j, 0)
-        nd = self.bat[f"nd_{phase}"].get(j, float("inf"))
-        soc0 = self.bat[f"b0_{phase}"].get(j, 0.5)
+        nc = self.bat[f"nc_{phase}"].get(j, 1)
+        nd = self.bat[f"nd_{phase}"].get(j, 1)
+        soc0 = self.bat[f"b0_{phase}"].get(j, 0)
         # soc0 = self.bat[f"energy_start_{phase}"].get(j, 0)
         dt = 1  # 1 hour time step assumed, currently soc is in units of p_base*1hour (default: 1MWh)
         a_eq[soc_j, discharge_j] = 1 / nd * dt
@@ -863,7 +871,7 @@ class LinDistModelMultiFast:
                 for a in "abc":
                     if not self.phase_exists(a, j):
                         continue
-                    if self.gen.loc[j, f"{a}_mode"] != "CONTROL_PQ":
+                    if self.gen.loc[j, f"control_variable"] != opf.CONTROL_PQ:
                         continue
                     pg = self.idx("pg", j, a, t=t)
                     qg = self.idx("qg", j, a, t=t)
@@ -917,7 +925,7 @@ class LinDistModelMultiFast:
                 for a in "abc":
                     if not self.phase_exists(a, j):
                         continue
-                    if self.gen.loc[j, f"{a}_mode"] != "CONTROL_PQ":
+                    if self.gen.loc[j, f"control_variable"] != opf.CONTROL_PQ:
                         continue
                     pg = self.idx("pg", j, a, t=t)
                     qg = self.idx("qg", j, a, t=t)

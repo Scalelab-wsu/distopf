@@ -352,7 +352,7 @@ class LinDistModelMulti:
             s_rated = self.gen[f"s{a}_max"]
             p_out = self.gen[f"p{a}"]
             q_max = ((s_rated**2) - ((p_out*gen_mult)**2)) ** (1 / 2)
-            q_min = -1 * q_max
+            q_min = -q_max
             for j in self.gen_buses[a]:
                 mode = self.gen.loc[j, f"control_variable"]
                 pg = self.idx("pg", j, a, t)
@@ -680,9 +680,7 @@ class LinDistModelMulti:
         # ########## Aineq and Bineq Formation ###########
         n_inequalities = 6
         n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])
-            + len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])
-            + len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])
+            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         ) * self.n_steps
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
@@ -737,9 +735,7 @@ class LinDistModelMulti:
         n_inequalities = 5
 
         n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])
-            + len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])
-            + len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])
+            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         ) * self.n_steps
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
