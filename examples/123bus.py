@@ -1,15 +1,14 @@
-import numpy as np
 import distopf as opf
-from distopf.lindist import LinDistModel
+
 case = opf.DistOPFCase(
     data_path="ieee123_30der",
-    gen_mult=1,
-    load_mult=1,
+    # gen_mult=1,
+    # load_mult=1,
     v_swing=1.0,
-    v_max=1.05,
-    v_min=0.95,
-    cvr_p = 1.0,
-    cvr_q = 1.0,
+    # v_max=1.05,
+    # v_min=0.95,
+    # cvr_p = 1.0,
+    # cvr_q = 1.0,
 )
 
 model = opf.LinDistModel(

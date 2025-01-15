@@ -311,7 +311,7 @@ class LinDistModelPFast:
         pg = self.idx("pg", j, phase)
         qc = self.idx("q_cap", j, phase)
         vj = self.idx("v", j, phase)
-        q_gen_nom = 0, 0
+        q_gen_nom = 0
         if self.gen is not None:
             q_gen_nom = get(self.gen[f"q{phase}"], j, 0)
         p_load_nom, q_load_nom = 0, 0

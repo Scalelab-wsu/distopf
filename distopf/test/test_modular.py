@@ -30,11 +30,12 @@ class TestModular(unittest.TestCase):
     def test_loss(self):
         # base_path = CASES_DIR / "csv/2Bus-1ph-batt"
         for start_time in range(0, 24, 6):
-            base_path = CASES_DIR / "csv/ieee123_alternate"
+            base_path = CASES_DIR / "csv/ieee123_30der"
 
             branch_data = pd.read_csv(base_path / "branch_data.csv")
             bus_data = pd.read_csv(base_path / "bus_data.csv")
             gen_data = pd.read_csv(base_path / "gen_data.csv")
+            gen_data["control_variable"] = "Q"
             reg_data = pd.read_csv(base_path / "reg_data.csv")
             cap_data = pd.read_csv(base_path / "cap_data.csv")
             # battery_data = pd.read_csv(base_path / "battery_data.csv")
@@ -117,9 +118,9 @@ class TestModular(unittest.TestCase):
                 mf, opf.multiperiod.cp_obj_loss, solver="CLARABEL"
             )
             result2 = opf.cvxpy_solve(m2, opf.cp_obj_loss, solver="CLARABEL")
-            result3 = opf.cvxpy_solve(m3, opf_solver.cp_obj_loss, solver="CLARABEL")
-            result4 = opf.cvxpy_solve(m4, opf_solver.cp_obj_loss, solver="CLARABEL")
-            result5 = opf.cvxpy_solve(m5, opf_solver.cp_obj_loss, solver="CLARABEL")
+            result3 = opf.cvxpy_solve(m3, opf.cp_obj_loss, solver="CLARABEL")
+            result4 = opf.cvxpy_solve(m4, opf.cp_obj_loss, solver="CLARABEL")
+            result5 = opf.cvxpy_solve(m5, opf.cp_obj_loss, solver="CLARABEL")
 
             print(start_time)
             print(f"multi:  objective={result1.fun}\t in {result1.runtime}s")
@@ -130,8 +131,15 @@ class TestModular(unittest.TestCase):
             print(f"Q fast: objective={result5.fun}\t in {result5.runtime}s")
             # print("debug")
             # assert abs(result1.fun - result2.fun) < 1e-3
+            f = round(result3.fun, 4)
+            assert f == round(result1.fun, 4)
+            assert f == round(resultf.fun, 4)
+            assert f == round(result2.fun, 4)
+            assert f == round(result3.fun, 4)
+            assert f == round(result4.fun, 4)
+            assert f == round(result5.fun, 4)
 
-    def test_curtail(self):
+    def test_p_target(self):
         # base_path = CASES_DIR / "csv/2Bus-1ph-batt"
         for start_time in range(0, 24, 6):
             base_path = CASES_DIR / "csv/ieee123_alternate"
@@ -139,6 +147,7 @@ class TestModular(unittest.TestCase):
             branch_data = pd.read_csv(base_path / "branch_data.csv")
             bus_data = pd.read_csv(base_path / "bus_data.csv")
             gen_data = pd.read_csv(base_path / "gen_data.csv")
+            gen_data["control_variable"] = "P"
             reg_data = pd.read_csv(base_path / "reg_data.csv")
             cap_data = pd.read_csv(base_path / "cap_data.csv")
             # battery_data = pd.read_csv(base_path / "battery_data.csv")
@@ -149,7 +158,12 @@ class TestModular(unittest.TestCase):
             bus_data.v_a = 1.0
             bus_data.v_b = 1.0
             bus_data.v_c = 1.0
-            gen_data.control_variable = opf.CONSTANT_Q
+            gen_data.pa *= 10
+            gen_data.pb *= 10
+            gen_data.pc *= 10
+            gen_data.sa_max *= 10
+            gen_data.sb_max *= 10
+            gen_data.sc_max *= 10
             m1 = LinDistModelMulti(
                 branch_data=branch_data,
                 bus_data=bus_data,
@@ -217,15 +231,15 @@ class TestModular(unittest.TestCase):
 
             _ = m1.a_eq, mf.a_eq, m2.a_eq, m3.a_eq, m4.a_eq, m5.a_eq
             result1 = opf.multiperiod.opf_solver_multi.cvxpy_solve(
-                m1, opf.multiperiod.cp_obj_loss, solver="CLARABEL"
+                m1, opf.multiperiod.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0]
             )
             resultf = opf.multiperiod.opf_solver_multi.cvxpy_solve(
-                mf, opf.multiperiod.cp_obj_loss, solver="CLARABEL"
+                mf, opf.multiperiod.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0]
             )
-            result2 = opf.cvxpy_solve(m2, opf.cp_obj_loss, solver="CLARABEL")
-            result3 = opf.cvxpy_solve(m3, opf_solver.cp_obj_loss, solver="CLARABEL")
-            result4 = opf.cvxpy_solve(m4, opf_solver.cp_obj_loss, solver="CLARABEL")
-            result5 = opf.cvxpy_solve(m5, opf_solver.cp_obj_loss, solver="CLARABEL")
+            result2 = opf.cvxpy_solve(m2, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0])
+            result3 = opf.cvxpy_solve(m3, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0])
+            result4 = opf.cvxpy_solve(m4, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0])
+            result5 = opf.cvxpy_solve(m5, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0])
 
             print(start_time)
             print(f"multi:  objective={result1.fun}\t in {result1.runtime}s")
@@ -234,5 +248,11 @@ class TestModular(unittest.TestCase):
             print(f"P old: objective={result3.fun}\t in {result3.runtime}s")
             print(f"PQ fast:   objective={result4.fun}\t in {result4.runtime}s")
             print(f"P fast: objective={result5.fun}\t in {result5.runtime}s")
+            f = round(result3.fun, 6)
+            assert f == round(result1.fun, 6)
+            assert f == round(resultf.fun, 6)
+            assert f == round(result2.fun, 6)
+            assert f == round(result4.fun, 6)
+            assert f == round(result5.fun, 6)
             # print("debug")
             # assert abs(result1.fun - result2.fun) < 1e-3

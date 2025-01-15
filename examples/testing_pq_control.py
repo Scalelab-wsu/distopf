@@ -79,13 +79,14 @@ if __name__ == "__main__":
 
     result_hex = opf.cvxpy_solve(hex, opf.cp_obj_loss)
     print(f" Hexagon: objective={result_hex.fun}, time={result_hex.runtime}")
-    pg_hex = hex.get_p_gens(result_hex.x)
-    qg_hex = hex.get_q_gens(result_hex.x)
-    opf.plot.plot_polar(pg_hex, qg_hex).show()
 
     result_oct = opf.cvxpy_solve(oct, opf.cp_obj_loss)
     print(f" Octogon: objective={result_oct.fun}, time={result_oct.runtime}")
-    pg_oct = hex.get_p_gens(result_oct.x)
-    qg_oct = hex.get_q_gens(result_oct.x)
-    opf.plot.plot_polar(pg_oct, qg_oct).show()
+
+    # pg_hex = hex.get_p_gens(result_hex.x)
+    # qg_hex = hex.get_q_gens(result_hex.x)
+    # pg_oct = hex.get_p_gens(result_oct.x)
+    # qg_oct = hex.get_q_gens(result_oct.x)
+    # opf.plot.plot_polar(pg_oct, qg_oct).show()
+    # opf.plot.plot_polar(pg_hex, qg_hex).show()
 

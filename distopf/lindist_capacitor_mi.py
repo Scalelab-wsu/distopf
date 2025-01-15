@@ -4,11 +4,11 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from numpy import sqrt, zeros
-from scipy.sparse import csr_matrix, vstack
-from distopf.lindist import LinDistModel, get
+from scipy.sparse import csr_array, vstack
+from distopf.base import LinDistBase
+from distopf.utils import get
 
-
-class LinDistModelCapMI(LinDistModel):
+class LinDistModelCapMI(LinDistBase):
     """
     LinDistFlow Model with support for capacitor bank control.
 
@@ -41,8 +41,9 @@ class LinDistModelCapMI(LinDistModel):
         self.zc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
         self.uc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
         self.a_ineq, self.b_ineq = self.create_inequality_constraints()
+        self.build()
 
-    def user_added_idx(self, var, node_j, phase):
+    def additional_variable_idx(self, var, node_j, phase):
         """
         User added index function. Override this function to add custom variables. Return None if `var` is not found.
         Parameters
@@ -61,13 +62,15 @@ class LinDistModelCapMI(LinDistModel):
             return self.uc_map[phase].get(node_j, [])
         return None
 
-    def add_capacitor_model(self, a_eq, b_eq, j, phase):
+    def add_capacitor_model(self, a_eq, b_eq, j, a):
+        qij = self.idx("qij", j, a)
         q_cap_nom = 0
         if self.cap is not None:
-            q_cap_nom = get(self.cap[f"q{phase}"], j, 0)
+            q_cap_nom = get(self.cap[f"q{a}"], j, 0)
         # equation indexes
-        zc = self.idx("zc", j, phase)
-        qc = self.idx("q_cap", j, phase)
+        zc = self.idx("zc", j, a)
+        qc = self.idx("q_cap", j, a)
+        a_eq[qij, qc] = 1  # add capacitor q variable to power flow equation
         a_eq[qc, qc] = 1
         a_eq[qc, zc] = -q_cap_nom
         return a_eq, b_eq
@@ -109,14 +112,14 @@ class LinDistModelCapMI(LinDistModel):
                 ineq3 += 4
                 ineq4 += 4
 
-        return csr_matrix(a_ineq), b_ineq
+        return a_ineq, b_ineq
 
     def create_inequality_constraints(self):
         a_cap, b_cap = self.create_capacitor_constraints()
         a_inv, b_inv = self.create_octagon_constraints()
         a_ub = vstack([a_cap, a_inv])
         b_ub = np.r_[b_cap, b_inv]
-        return a_ub, b_ub
+        return csr_array(a_ub), b_ub
 
     def get_zc(self, x):
         return self.get_device_variables(x, self.zc_map)

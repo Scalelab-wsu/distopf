@@ -4,7 +4,9 @@ from distopf.lindist import LinDistModel
 from distopf.lindist_p import LinDistModelP
 from distopf.lindist_q import LinDistModelQ
 from distopf.lindist_capacitor_mi import LinDistModelCapMI
+# from distopf.lindist_fast_base import LinDistBase
 from distopf.lindist_capacitor_regulator_mi import LinDistModelCapacitorRegulatorMI
+from distopf.lindist_fast import LinDistModelFast
 from distopf.opf_solver import (
     cvxpy_mi_solve,
     cvxpy_solve,
