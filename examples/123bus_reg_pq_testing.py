@@ -58,6 +58,8 @@ if __name__ == "__main__":
 
     print(f" objective={result.fun}, time={result.runtime}")
     print(m.u_reg.value @ np.array([m.b_i]).T)
+    regs = m.get_regulator_taps()
+    print(regs)
     v = m.get_voltages(result.x)
     s = m.get_apparent_power_flows(result.x)
     pg = m.get_p_gens(result.x)

@@ -2,15 +2,17 @@ import numpy as np
 import distopf as opf
 from distopf.lindist import LinDistModel
 from distopf.lindist_capacitor_mi import LinDistModelCapMI
+from distopf.lindist_capacitor_regulator_mi import LinDistModelCapacitorRegulatorMI
 from distopf.opf_solver import cvxpy_mi_solve
 import pandas as pd
 import cvxpy as cp
 
 case = opf.DistOPFCase(
-    data_path="ieee123_30der",
+    data_path="ieee13",
     gen_mult=1,
+
     load_mult=1,
-    v_swing=1.0,
+    v_swing=0.994,
     v_max=1.05,
     v_min=0.95,
 )
@@ -23,14 +25,15 @@ case.cap_data = pd.concat(
             {
                 "id": [14],
                 "name": [632],
-                "qa": [0.3],
-                "qb": [0.3],
+                "qa": [0.5],
+                "qb": [0.6],
                 "qc": [0.5],
                 "phases": ["abc"],
             }
         ),
     ]
 )
+case.gen_data.control_variable=""
 model = LinDistModelCapMI(
     branch_data=case.branch_data,
     bus_data=case.bus_data,

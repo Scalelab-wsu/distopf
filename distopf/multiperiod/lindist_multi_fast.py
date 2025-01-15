@@ -72,22 +72,16 @@ class LinDistModelMultiFast:
         self.start_step = start_step
         self.n_steps = n_steps
         self.delta_t = delta_t
-        self.swing_bus = self.bus.loc[self.bus.bus_type == "SWING", "id"].to_numpy()[0] - 1
 
         # ~~~~~~~~~~~~~~~~~~~~ prepare data ~~~~~~~~~~~~~~~~~~~~
         self.nb = len(self.bus.id)
         self.r, self.x = self._init_rx(self.branch)
+        self.swing_bus = self.bus.loc[self.bus.bus_type == "SWING"].index[0]
         self.all_buses = {
             "a": self.bus.loc[self.bus.phases.str.contains("a")].index.to_numpy(),
             "b": self.bus.loc[self.bus.phases.str.contains("b")].index.to_numpy(),
             "c": self.bus.loc[self.bus.phases.str.contains("c")].index.to_numpy(),
         }
-        self.load_buses = {
-            "a": self.all_buses["a"][np.where(self.all_buses["a"] != self.swing_bus)],
-            "b": self.all_buses["b"][np.where(self.all_buses["b"] != self.swing_bus)],
-            "c": self.all_buses["c"][np.where(self.all_buses["c"] != self.swing_bus)],
-        }
-
         self.gen_buses = dict(a=np.array([]), b=np.array([]), c=np.array([]))
         if self.gen.shape[0] > 0:
             self.gen_buses = {
@@ -663,6 +657,7 @@ class LinDistModelMultiFast:
         # ########## Aineq and Bineq Formation ###########
         n_inequalities = 1
         n_rows_ineq = n_inequalities * self.n_bats * self.n_steps
+        n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         # ineq1 = 0
@@ -689,6 +684,7 @@ class LinDistModelMultiFast:
         n_rows_ineq = n_inequalities * (
             len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         ) * self.n_steps
+        n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         ineq1 = 0
@@ -735,7 +731,7 @@ class LinDistModelMultiFast:
 
     def create_octagon_constraints(self):
         """
-        Create inequality constraints for the optimization problem.
+        Use an octagon to approximate the circular inequality constraint of an inverter.
         """
 
         # ########## Aineq and Bineq Formation ###########
@@ -744,6 +740,7 @@ class LinDistModelMultiFast:
         n_rows_ineq = n_inequalities * (
             len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         ) * self.n_steps
+        n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         ineq1 = 0

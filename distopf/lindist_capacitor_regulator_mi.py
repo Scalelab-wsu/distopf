@@ -1,28 +1,21 @@
-import numpy as np
-import distopf as opf
-
-from collections.abc import Callable, Collection
+from collections.abc import Callable
 from time import perf_counter
-
-import cvxpy as cp
-from scipy.optimize import OptimizeResult, linprog
-from scipy.sparse import csr_array
-
-
+import numpy as np
 import pandas as pd
-from numpy import sqrt
-from distopf.lindist import get
+import cvxpy as cp
+from scipy.sparse import csr_array
 from scipy.optimize import OptimizeResult
+import distopf as opf
 
 
 class LinDistModelCapacitorRegulatorMI(opf.LinDistModelCapMI):
     def __init__(
-        self,
-        branch_data: pd.DataFrame = None,
-        bus_data: pd.DataFrame = None,
-        gen_data: pd.DataFrame = None,
-        cap_data: pd.DataFrame = None,
-        reg_data: pd.DataFrame = None,
+            self,
+            branch_data: pd.DataFrame = None,
+            bus_data: pd.DataFrame = None,
+            gen_data: pd.DataFrame = None,
+            cap_data: pd.DataFrame = None,
+            reg_data: pd.DataFrame = None,
     ):
         super().__init__(
             branch_data=branch_data,
@@ -37,54 +30,15 @@ class LinDistModelCapacitorRegulatorMI(opf.LinDistModelCapMI):
         self.b_i = np.arange(0.9, 1.1, 0.00625)
         self.g_reg = None
 
-    def add_voltage_drop_model(self, a_eq, b_eq, j, a, b, c):
-        r, x = self.r, self.x
-        aa = "".join(sorted(a + a))
-        # if ph=='cab', then a+b=='ca'. Sort so ab=='ac'
-        ab = "".join(sorted(a + b))
-        ac = "".join(sorted(a + c))
-        i = self.idx("bi", j, a)[0]  # get the upstream node, i, on branch from i to j
-        reg_ratio = 1
-        if self.reg is not None:
-            reg_ratio = get(self.reg[f"ratio_{a}"], j, 1)
-        pij = self.idx("pij", j, a)
-        qij = self.idx("qij", j, a)
-        pijb = self.idx("pij", j, b)
-        qijb = self.idx("qij", j, b)
-        pijc = self.idx("pij", j, c)
-        qijc = self.idx("qij", j, c)
-        vi = self.idx("v", i, a)
-        vj = self.idx("v", j, a)
-        # Set V equation variable coefficients in a_eq and constants in b_eq
-        if self.bus.bus_type[i] == opf.SWING_BUS:  # Swing bus
-            a_eq[vi, vi] = 1
-            b_eq[vi] = self.bus.at[i, f"v_{a}"] ** 2
-
-        if self.reg is not None:
-            if j in self.reg.tb:
-                # reg_ratio = self.reg.at[j, f"ratio_{a}"]
-                # a_eq[vj, vj] = 1
-                # a_eq[vj, vi] = -1 * reg_ratio ** 2
-                return a_eq, b_eq
-
-        a_eq[vj, vj] = 1
-        a_eq[vj, vi] = -1 * reg_ratio**2
-        a_eq[vj, pij] = 2 * r[aa][i, j]
-        a_eq[vj, qij] = 2 * x[aa][i, j]
-        if self.phase_exists(b, j):
-            a_eq[vj, pijb] = -r[ab][i, j] + sqrt(3) * x[ab][i, j]
-            a_eq[vj, qijb] = -x[ab][i, j] - sqrt(3) * r[ab][i, j]
-        if self.phase_exists(c, j):
-            a_eq[vj, pijc] = -r[ac][i, j] - sqrt(3) * x[ac][i, j]
-            a_eq[vj, qijc] = -x[ac][i, j] + sqrt(3) * r[ac][i, j]
+    def add_regulator_model(self, a_eq, b_eq, j, a):
         return a_eq, b_eq
 
     def cvxpy_regulator_mi_constraints(self):
 
         n_u_reg = (
-            len(self.reg_buses["a"])
-            + len(self.reg_buses["b"])
-            + len(self.reg_buses["c"])
+                len(self.reg_buses["a"])
+                + len(self.reg_buses["b"])
+                + len(self.reg_buses["c"])
         )
         default_tap = np.zeros((max(n_u_reg, 1), 33))
         default_tap[:, 16] = 1
@@ -185,4 +139,3 @@ class LinDistModelCapacitorRegulatorMI(opf.LinDistModelCapMI):
             runtime=perf_counter() - tic,
         )
         return result
-

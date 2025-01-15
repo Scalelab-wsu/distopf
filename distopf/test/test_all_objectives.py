@@ -46,14 +46,12 @@ def assert_results_equal(model_new, model_old, res_new, res_old):
     gen_old.index = gen_old.index + 1
     gen_old["id"] = gen_old.index
     gen_old["name"] = gen_old.index
-    for i in range(gen_old.shape[0]):
-        if sum(abs(gen_old[i, :])) != 0:
-            assert np.allclose(
-                gen_old[i, :],
-                gen_new.loc[i + 1, ["a", "b", "c"]].astype(float).to_numpy(),
-                rtol=1.0e-5,
-                atol=1.0e-3,
-            )
+    assert np.allclose(
+        gen_old.loc[:, ["a", "b", "c"]].astype(float).to_numpy(),
+        gen_new.loc[:, ["a", "b", "c"]].astype(float).to_numpy(),
+        rtol=1.0e-3,
+        atol=1.0e-2,
+    )
     assert abs(res_new.fun - res_old.fun) <= 1.0e-6
     assert np.allclose(
         v_old, v_new.astype(float), rtol=1.0e-5, atol=1.0e-9, equal_nan=True

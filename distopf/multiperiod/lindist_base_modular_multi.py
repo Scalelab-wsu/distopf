@@ -72,11 +72,11 @@ class LinDistModelMulti:
         self.start_step = start_step
         self.n_steps = n_steps
         self.delta_t = delta_t
-        self.swing_bus = self.bus.loc[self.bus.bus_type == "SWING", "id"].to_numpy()[0] - 1
 
         # ~~~~~~~~~~~~~~~~~~~~ prepare data ~~~~~~~~~~~~~~~~~~~~
         self.nb = len(self.bus.id)
         self.r, self.x = self._init_rx(self.branch)
+        self.swing_bus = self.bus.loc[self.bus.bus_type == "SWING"].index[0]
         self.all_buses = {
             "a": self.bus.loc[self.bus.phases.str.contains("a")].index.to_numpy(),
             "b": self.bus.loc[self.bus.phases.str.contains("b")].index.to_numpy(),
@@ -490,6 +490,8 @@ class LinDistModelMulti:
                     a_eq, b_eq = self.add_voltage_drop_model(
                         a_eq, b_eq, j, a, b, c, t=t
                     )
+                    a_eq, b_eq = self.add_swing_voltage_model(a_eq, b_eq, j, a, t=t)
+                    a_eq, b_eq = self.add_regulator_model(a_eq, b_eq, j, a, t=t)
                     a_eq, b_eq = self.add_load_model(a_eq, b_eq, j, a, t=t)
                     a_eq, b_eq = self.add_generator_model(a_eq, b_eq, j, a, t=t)
                     a_eq, b_eq = self.add_capacitor_model(a_eq, b_eq, j, a, t=t)
@@ -528,17 +530,15 @@ class LinDistModelMulti:
     def add_voltage_drop_model(self, a_eq, b_eq, j, a, b, c, t=0):
         if t < self.start_step:
             t = self.start_step
+        if self.reg is not None:
+            if j in self.reg.tb:
+                return a_eq, b_eq
         r, x = self.r, self.x
         aa = "".join(sorted(a + a))
         # if ph=='cab', then a+b=='ca'. Sort so ab=='ac'
         ab = "".join(sorted(a + b))
         ac = "".join(sorted(a + c))
-        i = self.idx("bi", j, a, t=t)[
-            0
-        ]  # get the upstream node, i, on branch from i to j
-        reg_ratio = 1
-        if self.reg is not None:
-            reg_ratio = get(self.reg[f"ratio_{a}"], j, 1)
+        i = self.idx("bi", j, a, t=t)[0]  # get the upstream node, i
         pij = self.idx("pij", j, a, t=t)
         qij = self.idx("qij", j, a, t=t)
         pijb = self.idx("pij", j, b, t=t)
@@ -560,7 +560,7 @@ class LinDistModelMulti:
                 return a_eq, b_eq
 
         a_eq[vj, vj] = 1
-        a_eq[vj, vi] = -1 * reg_ratio**2
+        a_eq[vj, vi] = -1
         a_eq[vj, pij] = 2 * r[aa][i, j]
         a_eq[vj, qij] = 2 * x[aa][i, j]
         if self.phase_exists(b, j):
@@ -569,6 +569,32 @@ class LinDistModelMulti:
         if self.phase_exists(c, j):
             a_eq[vj, pijc] = -r[ac][i, j] - sqrt(3) * x[ac][i, j]
             a_eq[vj, qijc] = -x[ac][i, j] + sqrt(3) * r[ac][i, j]
+        return a_eq, b_eq
+
+    def add_regulator_model(self, a_eq, b_eq, j, a, t=0):
+        if t < self.start_step:
+            t = self.start_step
+        i = self.idx("bi", j, a, t=t)[0]  # get the upstream node, i, on branch from i to j
+        vi = self.idx("v", i, a, t=t)
+        vj = self.idx("v", j, a, t=t)
+
+        if self.reg is not None:
+            if j in self.reg.tb:
+                reg_ratio = get(self.reg[f"ratio_{a}"], j, 1)
+                a_eq[vj, vj] = 1
+                a_eq[vj, vi] = -1 * reg_ratio**2
+                return a_eq, b_eq
+        return a_eq, b_eq
+
+    def add_swing_voltage_model(self, a_eq, b_eq, j, a, t=0):
+        if t < self.start_step:
+            t = self.start_step
+        i = self.idx("bi", j, a, t=t)[0]  # get the upstream node, i, on branch from i to j
+        vi = self.idx("v", i, a, t=t)
+        # Set V equation variable coefficients in a_eq and constants in b_eq
+        if self.bus.bus_type[i] == opf.SWING_BUS:  # Swing bus
+            a_eq[vi, vi] = 1
+            b_eq[vi] = self.bus.at[i, f"v_{a}"] ** 2
         return a_eq, b_eq
 
     def add_generator_model(self, a_eq, b_eq, j, phase, t=0):
@@ -656,6 +682,7 @@ class LinDistModelMulti:
         # ########## Aineq and Bineq Formation ###########
         n_inequalities = 1
         n_rows_ineq = n_inequalities * self.n_bats * self.n_steps
+        n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         # ineq1 = 0
@@ -682,6 +709,7 @@ class LinDistModelMulti:
         n_rows_ineq = n_inequalities * (
             len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         ) * self.n_steps
+        n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         ineq1 = 0
@@ -726,6 +754,58 @@ class LinDistModelMulti:
 
         return a_ineq, b_ineq
 
+    # def create_octagon_constraints(self):
+    #     """
+    #     Use an octagon to approximate the circular inequality constraint of an inverter.
+    #     """
+    #
+    #     # ########## Aineq and Bineq Formation ###########
+    #     n_inequalities = 5
+    #
+    #     n_rows_ineq = n_inequalities * (
+    #         len(self.bat)
+    #     ) * self.n_steps
+    #     a_ineq = zeros((n_rows_ineq, self.n_x))
+    #     b_ineq = zeros(n_rows_ineq)
+    #     ineq = list(range(n_inequalities))
+    #     for t in range(self.start_step, self.start_step + self.n_steps):
+    #         for j in self.bat.index:
+    #             for a in "abc":
+    #                 if not self.phase_exists(a, j):
+    #                     continue
+    #                 if self.gen.loc[j, f"control_variable"] != opf.CONTROL_PQ:
+    #                     continue
+    #                 pg = self.idx("pg", j, a, t=t)
+    #                 qg = self.idx("qg", j, a, t=t)
+    #                 s_rated = self.gen.at[j, f"s{a}_max"]
+    #                 coef = sqrt(2) - 1  # ~=0.4142
+    #                 # equation indexes
+    #                 # Right half plane. Positive P
+    #                 # limit for small +P and large +Q
+    #                 a_ineq[ineq[0], pg] = coef
+    #                 a_ineq[ineq[0], qg] = 1
+    #                 b_ineq[ineq[0]] = s_rated
+    #                 # limit for large +P and small +Q
+    #                 a_ineq[ineq[1], pg] = 1
+    #                 a_ineq[ineq[1], qg] = coef
+    #                 b_ineq[ineq[1]] = s_rated
+    #                 # limit for large +P and small -Q
+    #                 a_ineq[ineq[2], pg] = 1
+    #                 a_ineq[ineq[2], qg] = -coef
+    #                 b_ineq[ineq[2]] = s_rated
+    #                 # limit for small +P and large -Q
+    #                 a_ineq[ineq[3], pg] = coef
+    #                 a_ineq[ineq[3], qg] = -1
+    #                 b_ineq[ineq[3]] = s_rated
+    #                 # limit to right half plane
+    #                 a_ineq[ineq[4], pg] = -1
+    #                 b_ineq[ineq[4]] = 0
+    #
+    #                 for n_ineq in range(len(ineq)):
+    #                     ineq[n_ineq] += len(ineq)
+    #                 break
+    #     return a_ineq, b_ineq
+
     def create_octagon_constraints(self):
         """
         Create inequality constraints for the optimization problem.
@@ -737,6 +817,7 @@ class LinDistModelMulti:
         n_rows_ineq = n_inequalities * (
             len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         ) * self.n_steps
+        n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         ineq1 = 0

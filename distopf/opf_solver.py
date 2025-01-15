@@ -410,7 +410,7 @@ def cvxpy_mi_solve(
     Solve a convex optimization problem using cvxpy.
     Parameters
     ----------
-    model : LinDistModel, or LinDistModelP, or LinDistModelQ
+    model : LinDistModelCapMI
     obj_func : handle to the objective function
     kwargs :
 
@@ -437,12 +437,9 @@ def cvxpy_mi_solve(
     g = [csr_array(m.a_eq) @ x - m.b_eq.flatten() == 0]
     lb = [x[i] >= m.bounds[i][0] for i in range(m.n_x)]
     ub = [x[i] <= m.bounds[i][1] for i in range(m.n_x)]
-
-    error_percent = kwargs.get("error_percent", np.zeros(3))
-    target = kwargs.get("target", None)
-    expression = obj_func(m, x, target=target, error_percent=error_percent)
+    expression = obj_func(m, x, **kwargs)
     prob = cp.Problem(cp.Minimize(expression), g + ub + lb + gu + g_ineq)
-    prob.solve(verbose=False, solver=solver)
+    prob.solve(verbose=True, solver=solver)
 
     x_res = x.value
     result = OptimizeResult(
