@@ -42,9 +42,16 @@ class LinDistModel(LinDistBase):
         reg_data: pd.DataFrame = None,
     ):
         super().__init__(branch_data, bus_data, gen_data, cap_data, reg_data)
+        self.build()
+
+    def initialize_variable_index_pointers(self):
+        self.x_maps, self.n_x = self._variable_tables(self.branch)
+        self.v_map, self.n_x = self._add_device_variables(self.n_x, self.all_buses)
+        self.pg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
+        self.qg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
+        self.qc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
         self.pl_map, self.n_x = self._add_device_variables(self.n_x, self.load_buses)
         self.ql_map, self.n_x = self._add_device_variables(self.n_x, self.load_buses)
-        self.build()
 
     def additional_variable_idx(self, var, node_j, phase):
         """

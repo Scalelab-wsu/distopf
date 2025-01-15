@@ -699,7 +699,7 @@ class LinDistModelMulti:
         #             ineq1 += 1
         return a_ineq, b_ineq
 
-    def create_hexagon_constraints(self):
+    def create_hexagon_constraints_old(self):
         """
         Create inequality constraints for the optimization problem.
         """
@@ -754,107 +754,100 @@ class LinDistModelMulti:
 
         return a_ineq, b_ineq
 
-    # def create_octagon_constraints(self):
-    #     """
-    #     Use an octagon to approximate the circular inequality constraint of an inverter.
-    #     """
-    #
-    #     # ########## Aineq and Bineq Formation ###########
-    #     n_inequalities = 5
-    #
-    #     n_rows_ineq = n_inequalities * (
-    #         len(self.bat)
-    #     ) * self.n_steps
-    #     a_ineq = zeros((n_rows_ineq, self.n_x))
-    #     b_ineq = zeros(n_rows_ineq)
-    #     ineq = list(range(n_inequalities))
-    #     for t in range(self.start_step, self.start_step + self.n_steps):
-    #         for j in self.bat.index:
-    #             for a in "abc":
-    #                 if not self.phase_exists(a, j):
-    #                     continue
-    #                 if self.gen.loc[j, f"control_variable"] != opf.CONTROL_PQ:
-    #                     continue
-    #                 pg = self.idx("pg", j, a, t=t)
-    #                 qg = self.idx("qg", j, a, t=t)
-    #                 s_rated = self.gen.at[j, f"s{a}_max"]
-    #                 coef = sqrt(2) - 1  # ~=0.4142
-    #                 # equation indexes
-    #                 # Right half plane. Positive P
-    #                 # limit for small +P and large +Q
-    #                 a_ineq[ineq[0], pg] = coef
-    #                 a_ineq[ineq[0], qg] = 1
-    #                 b_ineq[ineq[0]] = s_rated
-    #                 # limit for large +P and small +Q
-    #                 a_ineq[ineq[1], pg] = 1
-    #                 a_ineq[ineq[1], qg] = coef
-    #                 b_ineq[ineq[1]] = s_rated
-    #                 # limit for large +P and small -Q
-    #                 a_ineq[ineq[2], pg] = 1
-    #                 a_ineq[ineq[2], qg] = -coef
-    #                 b_ineq[ineq[2]] = s_rated
-    #                 # limit for small +P and large -Q
-    #                 a_ineq[ineq[3], pg] = coef
-    #                 a_ineq[ineq[3], qg] = -1
-    #                 b_ineq[ineq[3]] = s_rated
-    #                 # limit to right half plane
-    #                 a_ineq[ineq[4], pg] = -1
-    #                 b_ineq[ineq[4]] = 0
-    #
-    #                 for n_ineq in range(len(ineq)):
-    #                     ineq[n_ineq] += len(ineq)
-    #                 break
-    #     return a_ineq, b_ineq
-
-    def create_octagon_constraints(self):
+    def create_hexagon_constraints(self):
         """
-        Create inequality constraints for the optimization problem.
+        Use an octagon to approximate the circular inequality constraint of an inverter.
         """
-
-        # ########## Aineq and Bineq Formation ###########
         n_inequalities = 5
-
         n_rows_ineq = n_inequalities * (
             len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         ) * self.n_steps
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
-        ineq1 = 0
-        ineq2 = 1
-        ineq3 = 2
-        ineq4 = 3
-        ineq5 = 4
+        ineq = list(range(n_inequalities)) # initialize equation indices
         for t in range(self.start_step, self.start_step + self.n_steps):
             for j in self.gen.index:
                 for a in "abc":
                     if not self.phase_exists(a, j):
                         continue
-                    if self.gen.loc[j, f"control_variable"] != opf.CONTROL_PQ:
+                    if self.gen.loc[j, "control_variable"] != opf.CONTROL_PQ:
                         continue
                     pg = self.idx("pg", j, a, t=t)
                     qg = self.idx("qg", j, a, t=t)
                     s_rated = self.gen.at[j, f"s{a}_max"]
-                    # equation indexes
-                    a_ineq[ineq1, pg] = sqrt(2)
-                    a_ineq[ineq1, qg] = -2 + sqrt(2)
-                    b_ineq[ineq1] = sqrt(2) * s_rated
-                    a_ineq[ineq2, pg] = sqrt(2)
-                    a_ineq[ineq2, qg] = 2 - sqrt(2)
-                    b_ineq[ineq2] = sqrt(2) * s_rated
-                    a_ineq[ineq3, pg] = -1 + sqrt(2)
-                    a_ineq[ineq3, qg] = 1
-                    b_ineq[ineq3] = s_rated
-                    a_ineq[ineq4, pg] = -1 + sqrt(2)
-                    a_ineq[ineq4, qg] = -1
-                    b_ineq[ineq4] = s_rated
-                    a_ineq[ineq5, pg] = -1
-                    b_ineq[ineq5] = 0
-                    ineq1 += n_inequalities
-                    ineq2 += n_inequalities
-                    ineq3 += n_inequalities
-                    ineq4 += n_inequalities
-                    ineq5 += n_inequalities
+                    coef = sqrt(3)/3  # ~=0.5774
+                    # Right half plane. Positive P
+                    # limit for small +P and large +Q
+                    a_ineq[ineq[0], pg] = 0
+                    a_ineq[ineq[0], qg] = 2*coef
+                    b_ineq[ineq[0]] = s_rated
+                    # limit for large +P and small +Q
+                    a_ineq[ineq[1], pg] = 1
+                    a_ineq[ineq[1], qg] = coef
+                    b_ineq[ineq[1]] = s_rated
+                    # limit for large +P and small -Q
+                    a_ineq[ineq[2], pg] = 1
+                    a_ineq[ineq[2], qg] = -coef
+                    b_ineq[ineq[2]] = s_rated
+                    # limit for small +P and large -Q
+                    a_ineq[ineq[3], pg] = 0
+                    a_ineq[ineq[3], qg] = -2*coef
+                    b_ineq[ineq[3]] = s_rated
+                    # limit to right half plane
+                    a_ineq[ineq[4], pg] = -1
+                    b_ineq[ineq[4]] = 0
+                    # increment equation indices
+                    for n_ineq in range(len(ineq)):
+                        ineq[n_ineq] += len(ineq)
+        return a_ineq, b_ineq
+
+    def create_octagon_constraints(self):
+        """
+        Use an octagon to approximate the circular inequality constraint of an inverter.
+        """
+        n_inequalities = 5
+        n_rows_ineq = n_inequalities * (
+            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
+        ) * self.n_steps
+        n_rows_ineq = max(n_rows_ineq, 1)
+        a_ineq = zeros((n_rows_ineq, self.n_x))
+        b_ineq = zeros(n_rows_ineq)
+        ineq = list(range(n_inequalities)) # initialize equation indices
+        for t in range(self.start_step, self.start_step + self.n_steps):
+            for j in self.gen.index:
+                for a in "abc":
+                    if not self.phase_exists(a, j):
+                        continue
+                    if self.gen.loc[j, "control_variable"] != opf.CONTROL_PQ:
+                        continue
+                    pg = self.idx("pg", j, a, t=t)
+                    qg = self.idx("qg", j, a, t=t)
+                    s_rated = self.gen.at[j, f"s{a}_max"]
+                    coef = sqrt(2) - 1  # ~=0.4142
+                    # Right half plane. Positive P
+                    # limit for small +P and large +Q
+                    a_ineq[ineq[0], pg] = coef
+                    a_ineq[ineq[0], qg] = 1
+                    b_ineq[ineq[0]] = s_rated
+                    # limit for large +P and small +Q
+                    a_ineq[ineq[1], pg] = 1
+                    a_ineq[ineq[1], qg] = coef
+                    b_ineq[ineq[1]] = s_rated
+                    # limit for large +P and small -Q
+                    a_ineq[ineq[2], pg] = 1
+                    a_ineq[ineq[2], qg] = -coef
+                    b_ineq[ineq[2]] = s_rated
+                    # limit for small +P and large -Q
+                    a_ineq[ineq[3], pg] = coef
+                    a_ineq[ineq[3], qg] = -1
+                    b_ineq[ineq[3]] = s_rated
+                    # limit to right half plane
+                    a_ineq[ineq[4], pg] = -1
+                    b_ineq[ineq[4]] = 0
+                    # increment equation indices
+                    for n_ineq in range(len(ineq)):
+                        ineq[n_ineq] += len(ineq)
         return a_ineq, b_ineq
 
     def create_inequality_constraints(self):

@@ -9,6 +9,7 @@ from distopf.multiperiod.deprecated.lindist_p_multi import LinDistModelP
 from distopf.multiperiod.deprecated.lindist_q_multi import LinDistModelQ
 from distopf.multiperiod.deprecated.lindist_base_multi import LinDistModel
 from distopf.multiperiod.lindist_base_modular_multi import LinDistModelMulti
+from distopf.multiperiod.lindist_multi_fast import LinDistModelMultiFast
 
 
 # cost = pd.read_csv("cost_data.csv")
@@ -445,7 +446,7 @@ def cvxpy_mi_solve(
     pass
 
 
-def lp_solve(model: LinDistModel, c: np.ndarray = None) -> OptimizeResult:
+def lp_solve(model: LinDistModelMulti | LinDistModelMultiFast, c: np.ndarray = None) -> OptimizeResult:
     """
     Solve a linear program using scipy.optimize.linprog and having the objective function:
         Min c^T x

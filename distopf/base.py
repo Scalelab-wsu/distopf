@@ -15,15 +15,9 @@ from distopf.utils import (
     get,
 )
 
-
-class LinDistBase:
+class BaseModel:
     """
-    LinDistFlow Model base class for linear power flow modeling.
-
-    This class represents a linearized distribution model used for calculating
-    power flows, voltages, and other system properties in a distribution network
-    using the linearized branch-flow formulation from [1]. The model is composed of several power system components
-    such as buses, branches, generators, capacitors, and regulators.
+    LinDistFlow Model base class.
 
     Parameters
     ----------
@@ -38,42 +32,6 @@ class LinDistBase:
     reg_data : pd.DataFrame
         DataFrame containing regulator data.
 
-    References
-    ----------
-    [1] R. R. Jha, A. Dubey, C.-C. Liu, and K. P. Schneider,
-    “Bi-Level Volt-VAR Optimization to Coordinate Smart Inverters
-    With Voltage Control Devices,”
-    IEEE Trans. Power Syst., vol. 34, no. 3, pp. 1801–1813,
-    May 2019, doi: 10.1109/TPWRS.2018.2890613.
-
-    Examples
-    --------
-    This example demonstrates how to set up and solve a linear distribution flow model
-    using a provided case, and visualize the results.
-
-    >>> import distopf as opf
-    >>> # Prepare the case data
-    >>> case = opf.DistOPFCase(data_path="ieee123_30der")
-    >>> # Initialize the LinDistModel
-    >>> model = LinDistModel(
-    ...     branch_data=case.branch_data,
-    ...     bus_data=case.bus_data,
-    ...     gen_data=case.gen_data,
-    ...     cap_data=case.cap_data,
-    ...     reg_data=case.reg_data,
-    ... )
-    >>> # Solve the model using the specified objective function
-    >>> result = opf.lp_solve(model, opf.gradient_load_min(model))
-    >>> # Extract and plot results
-    >>> v = model.get_voltages(result.x)
-    >>> s = model.get_apparent_power_flows(result.x)
-    >>> p_gens = model.get_p_gens(result.x)
-    >>> q_gens = model.get_q_gens(result.x)
-    >>> # Visualize network and power flows
-    >>> opf.plot_network(model, v=v, s=s, p_gen=p_gens, q_gen=q_gens).show()
-    >>> opf.plot_voltages(v).show()
-    >>> opf.plot_power_flows(s).show()
-    >>> opf.plot_gens(p_gens, q_gens).show()
     """
 
     def __init__(
@@ -147,11 +105,14 @@ class LinDistBase:
                 + len(self.reg_buses["c"])
             )
         # ~~ initialize index pointers ~~
-        self.x_maps, self.n_x = self._variable_tables(self.branch)
-        self.v_map, self.n_x = self._add_device_variables(self.n_x, self.all_buses)
-        self.pg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
-        self.qg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
-        self.qc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
+        self.n_x = 0
+        self.x_maps = None
+        self.v_maps = None
+        self.pg_map = None
+        self.qg_map = None
+        self.qc_map = None
+        self.pl_map = None
+        self.ql_map = None
         # ~~~~~~~~~~~~~~~~~~~~ initialize Aeq and beq ~~~~~~~~~~~~~~~~~~~~
         self.a_eq, self.b_eq = None, None
         self.a_ub, self.b_ub = None, None
@@ -160,7 +121,159 @@ class LinDistBase:
         self.x_min = None
         self.x_max = None
 
+class LinDistBase(BaseModel):
+    """
+    LinDistFlow Model base class for linear power flow modeling.
+
+    This class represents a linearized distribution model used for calculating
+    power flows, voltages, and other system properties in a distribution network
+    using the linearized branch-flow formulation from [1]. The model is composed of several power system components
+    such as buses, branches, generators, capacitors, and regulators.
+
+    Parameters
+    ----------
+    branch_data : pd.DataFrame
+        DataFrame containing branch data including resistance and reactance values and limits.
+    bus_data : pd.DataFrame
+        DataFrame containing bus data such as loads, voltages, and limits.
+    gen_data : pd.DataFrame
+        DataFrame containing generator data.
+    cap_data : pd.DataFrame
+        DataFrame containing capacitor data.
+    reg_data : pd.DataFrame
+        DataFrame containing regulator data.
+
+    References
+    ----------
+    [1] R. R. Jha, A. Dubey, C.-C. Liu, and K. P. Schneider,
+    “Bi-Level Volt-VAR Optimization to Coordinate Smart Inverters
+    With Voltage Control Devices,”
+    IEEE Trans. Power Syst., vol. 34, no. 3, pp. 1801–1813,
+    May 2019, doi: 10.1109/TPWRS.2018.2890613.
+
+    Examples
+    --------
+    This example demonstrates how to set up and solve a linear distribution flow model
+    using a provided case, and visualize the results.
+
+    >>> import distopf as opf
+    >>> # Prepare the case data
+    >>> case = opf.DistOPFCase(data_path="ieee123_30der")
+    >>> # Initialize the LinDistModel
+    >>> model = LinDistModel(
+    ...     branch_data=case.branch_data,
+    ...     bus_data=case.bus_data,
+    ...     gen_data=case.gen_data,
+    ...     cap_data=case.cap_data,
+    ...     reg_data=case.reg_data,
+    ... )
+    >>> # Solve the model using the specified objective function
+    >>> result = opf.lp_solve(model, opf.gradient_load_min(model))
+    >>> # Extract and plot results
+    >>> v = model.get_voltages(result.x)
+    >>> s = model.get_apparent_power_flows(result.x)
+    >>> p_gens = model.get_p_gens(result.x)
+    >>> q_gens = model.get_q_gens(result.x)
+    >>> # Visualize network and power flows
+    >>> opf.plot_network(model, v=v, s=s, p_gen=p_gens, q_gen=q_gens).show()
+    >>> opf.plot_voltages(v).show()
+    >>> opf.plot_power_flows(s).show()
+    >>> opf.plot_gens(p_gens, q_gens).show()
+    """
+
+    # def __init__(
+    #     self,
+    #     branch_data: pd.DataFrame = None,
+    #     bus_data: pd.DataFrame = None,
+    #     gen_data: pd.DataFrame = None,
+    #     cap_data: pd.DataFrame = None,
+    #     reg_data: pd.DataFrame = None,
+    # ):
+    #     # ~~~~~~~~~~~~~~~~~~~~ Load Data Frames ~~~~~~~~~~~~~~~~~~~~
+    #     self.branch = handle_branch_input(branch_data)
+    #     self.bus = handle_bus_input(bus_data)
+    #     self.gen = handle_gen_input(gen_data)
+    #     self.cap = handle_cap_input(cap_data)
+    #     self.reg = handle_reg_input(reg_data)
+    #     self.branch_data = self.branch
+    #     self.bus_data = self.bus
+    #     self.gen_data = self.gen
+    #     self.cap_data = self.cap
+    #     self.reg_data = self.reg
+    #
+    #     # ~~~~~~~~~~~~~~~~~~~~ prepare data ~~~~~~~~~~~~~~~~~~~~
+    #     self.nb = len(self.bus.id)
+    #     self.r, self.x = self._init_rx(self.branch)
+    #     self.swing_bus = self.bus.loc[self.bus.bus_type == "SWING"].index[0]
+    #     self.all_buses = {
+    #         "a": self.bus.loc[self.bus.phases.str.contains("a")].index.to_numpy(),
+    #         "b": self.bus.loc[self.bus.phases.str.contains("b")].index.to_numpy(),
+    #         "c": self.bus.loc[self.bus.phases.str.contains("c")].index.to_numpy(),
+    #     }
+    #     self.load_buses = {
+    #         "a": self.all_buses["a"][np.where(self.all_buses["a"] != self.swing_bus)],
+    #         "b": self.all_buses["b"][np.where(self.all_buses["b"] != self.swing_bus)],
+    #         "c": self.all_buses["c"][np.where(self.all_buses["c"] != self.swing_bus)],
+    #     }
+    #     self.gen_buses = dict(a=np.array([]), b=np.array([]), c=np.array([]))
+    #     if self.gen.shape[0] > 0:
+    #         self.gen_buses = {
+    #             "a": self.gen.loc[self.gen.phases.str.contains("a")].index.to_numpy(),
+    #             "b": self.gen.loc[self.gen.phases.str.contains("b")].index.to_numpy(),
+    #             "c": self.gen.loc[self.gen.phases.str.contains("c")].index.to_numpy(),
+    #         }
+    #         self.n_gens = (
+    #             len(self.gen_buses["a"])
+    #             + len(self.gen_buses["b"])
+    #             + len(self.gen_buses["c"])
+    #         )
+    #     self.cap_buses = dict(a=np.array([]), b=np.array([]), c=np.array([]))
+    #     if self.cap.shape[0] > 0:
+    #         self.cap_buses = {
+    #             "a": self.cap.loc[self.cap.phases.str.contains("a")].index.to_numpy(),
+    #             "b": self.cap.loc[self.cap.phases.str.contains("b")].index.to_numpy(),
+    #             "c": self.cap.loc[self.cap.phases.str.contains("c")].index.to_numpy(),
+    #         }
+    #         self.n_caps = (
+    #             len(self.cap_buses["a"])
+    #             + len(self.cap_buses["b"])
+    #             + len(self.cap_buses["c"])
+    #         )
+    #     self.reg_buses = dict(a=np.array([]), b=np.array([]), c=np.array([]))
+    #     if self.reg.shape[0] > 0:
+    #         self.reg_buses = {
+    #             "a": self.reg.loc[self.reg.phases.str.contains("a")].index.to_numpy(),
+    #             "b": self.reg.loc[self.reg.phases.str.contains("b")].index.to_numpy(),
+    #             "c": self.reg.loc[self.reg.phases.str.contains("c")].index.to_numpy(),
+    #         }
+    #         self.n_regs = (
+    #             len(self.reg_buses["a"])
+    #             + len(self.reg_buses["b"])
+    #             + len(self.reg_buses["c"])
+    #         )
+    #     # ~~ initialize index pointers ~~
+    #     self.x_maps, self.n_x = self._variable_tables(self.branch)
+    #     self.v_map, self.n_x = self._add_device_variables(self.n_x, self.all_buses)
+    #     self.pg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
+    #     self.qg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
+    #     self.qc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
+    #     # ~~~~~~~~~~~~~~~~~~~~ initialize Aeq and beq ~~~~~~~~~~~~~~~~~~~~
+    #     self.a_eq, self.b_eq = None, None
+    #     self.a_ub, self.b_ub = None, None
+    #     self.bounds = None
+    #     self.bounds_tuple = None
+    #     self.x_min = None
+    #     self.x_max = None
+
+    def initialize_variable_index_pointers(self):
+        self.x_maps, self.n_x = self._variable_tables(self.branch)
+        self.v_map, self.n_x = self._add_device_variables(self.n_x, self.all_buses)
+        self.pg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
+        self.qg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
+        self.qc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
+
     def build(self):
+        self.initialize_variable_index_pointers()
         self.a_eq, self.b_eq = self.create_model()
         self.a_ub, self.b_ub = self.create_inequality_constraints()
         self.bounds = self.init_bounds()
@@ -585,24 +698,16 @@ class LinDistBase:
 
     def create_hexagon_constraints(self):
         """
-        Use a hexagon to approximate the circular inequality constraint of an inverter.
+        Use an octagon to approximate the circular inequality constraint of an inverter.
         """
-
-        # ########## Aineq and Bineq Formation ###########
-        n_inequalities = 6
+        n_inequalities = 5
         n_rows_ineq = n_inequalities * (
             len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
         )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
-        ineq1 = 0
-        ineq2 = 1
-        ineq3 = 2
-        ineq4 = 3
-        ineq5 = 4
-        ineq6 = 5
-
+        ineq = list(range(n_inequalities)) # initialize equation indices
         for j in self.gen.index:
             for a in "abc":
                 if not self.phase_exists(a, j):
@@ -612,31 +717,31 @@ class LinDistBase:
                 pg = self.idx("pg", j, a)
                 qg = self.idx("qg", j, a)
                 s_rated = self.gen.at[j, f"s{a}_max"]
-                # equation indexes
-                a_ineq[ineq1, pg] = -sqrt(3)
-                a_ineq[ineq1, qg] = -1
-                b_ineq[ineq1] = sqrt(3) * s_rated
-                a_ineq[ineq2, pg] = sqrt(3)
-                a_ineq[ineq2, qg] = 1
-                b_ineq[ineq2] = sqrt(3) * s_rated
-                a_ineq[ineq3, qg] = -1
-                b_ineq[ineq3] = sqrt(3) / 2 * s_rated
-                a_ineq[ineq4, qg] = 1
-                b_ineq[ineq4] = sqrt(3) / 2 * s_rated
-                a_ineq[ineq5, pg] = sqrt(3)
-                a_ineq[ineq5, qg] = -1
-                b_ineq[ineq5] = sqrt(3) * s_rated
-                a_ineq[ineq6, pg] = -sqrt(3)
-                a_ineq[ineq6, qg] = 1
-                b_ineq[ineq6] = -sqrt(3) * s_rated
-                ineq1 += 6
-                ineq2 += 6
-                ineq3 += 6
-                ineq4 += 6
-                ineq5 += 6
-                ineq6 += 6
-
-        return csr_array(a_ineq), b_ineq
+                coef = sqrt(3)/3  # ~=0.5774
+                # Right half plane. Positive P
+                # limit for small +P and large +Q
+                a_ineq[ineq[0], pg] = 0
+                a_ineq[ineq[0], qg] = 2*coef
+                b_ineq[ineq[0]] = s_rated
+                # limit for large +P and small +Q
+                a_ineq[ineq[1], pg] = 1
+                a_ineq[ineq[1], qg] = coef
+                b_ineq[ineq[1]] = s_rated
+                # limit for large +P and small -Q
+                a_ineq[ineq[2], pg] = 1
+                a_ineq[ineq[2], qg] = -coef
+                b_ineq[ineq[2]] = s_rated
+                # limit for small +P and large -Q
+                a_ineq[ineq[3], pg] = 0
+                a_ineq[ineq[3], qg] = -2*coef
+                b_ineq[ineq[3]] = s_rated
+                # limit to right half plane
+                a_ineq[ineq[4], pg] = -1
+                b_ineq[ineq[4]] = 0
+                # increment equation indices
+                for n_ineq in range(len(ineq)):
+                    ineq[n_ineq] += len(ineq)
+        return a_ineq, b_ineq
 
     def create_octagon_constraints(self):
         """
@@ -647,17 +752,12 @@ class LinDistBase:
         n_inequalities = 5
 
         n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
+                len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3
         )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
-        ineq1 = 0
-        ineq2 = 1
-        ineq3 = 2
-        ineq4 = 3
-        ineq5 = 4
-
+        ineq = list(range(n_inequalities))
         for j in self.gen.index:
             for a in "abc":
                 if not self.phase_exists(a, j):
@@ -667,28 +767,31 @@ class LinDistBase:
                 pg = self.idx("pg", j, a)
                 qg = self.idx("qg", j, a)
                 s_rated = self.gen.at[j, f"s{a}_max"]
-                # equation indexes
-                a_ineq[ineq1, pg] = sqrt(2)
-                a_ineq[ineq1, qg] = -2 + sqrt(2)
-                b_ineq[ineq1] = sqrt(2) * s_rated
-                a_ineq[ineq2, pg] = sqrt(2)
-                a_ineq[ineq2, qg] = 2 - sqrt(2)
-                b_ineq[ineq2] = sqrt(2) * s_rated
-                a_ineq[ineq3, pg] = -1 + sqrt(2)
-                a_ineq[ineq3, qg] = 1
-                b_ineq[ineq3] = s_rated
-                a_ineq[ineq4, pg] = -1 + sqrt(2)
-                a_ineq[ineq4, qg] = -1
-                b_ineq[ineq4] = s_rated
-                a_ineq[ineq5, pg] = -1
-                b_ineq[ineq5] = 0
-                ineq1 += n_inequalities
-                ineq2 += n_inequalities
-                ineq3 += n_inequalities
-                ineq4 += n_inequalities
-                ineq5 += n_inequalities
+                coef = sqrt(2) - 1  # ~=0.4142
+                # Right half plane. Positive P
+                # limit for small +P and large +Q
+                a_ineq[ineq[0], pg] = coef
+                a_ineq[ineq[0], qg] = 1
+                b_ineq[ineq[0]] = s_rated
+                # limit for large +P and small +Q
+                a_ineq[ineq[1], pg] = 1
+                a_ineq[ineq[1], qg] = coef
+                b_ineq[ineq[1]] = s_rated
+                # limit for large +P and small -Q
+                a_ineq[ineq[2], pg] = 1
+                a_ineq[ineq[2], qg] = -coef
+                b_ineq[ineq[2]] = s_rated
+                # limit for small +P and large -Q
+                a_ineq[ineq[3], pg] = coef
+                a_ineq[ineq[3], qg] = -1
+                b_ineq[ineq[3]] = s_rated
+                # limit to right half plane
+                a_ineq[ineq[4], pg] = -1
+                b_ineq[ineq[4]] = 0
 
-        return csr_array(a_ineq), b_ineq
+                for n_ineq in range(len(ineq)):
+                    ineq[n_ineq] += len(ineq)
+        return a_ineq, b_ineq
 
     def parse_results(self, x, variable_name: str):
         values = pd.DataFrame(columns=["name", "a", "b", "c"])

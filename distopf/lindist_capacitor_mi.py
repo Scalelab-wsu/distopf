@@ -38,10 +38,16 @@ class LinDistModelCapMI(LinDistBase):
         super().__init__(
             branch_data, bus_data, gen_data, cap_data=cap_data, reg_data=reg_data
         )
+        self.build()
+
+    def initialize_variable_index_pointers(self):
+        self.x_maps, self.n_x = self._variable_tables(self.branch)
+        self.v_map, self.n_x = self._add_device_variables(self.n_x, self.all_buses)
+        self.pg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
+        self.qg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
+        self.qc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
         self.zc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
         self.uc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
-        self.a_ineq, self.b_ineq = self.create_inequality_constraints()
-        self.build()
 
     def additional_variable_idx(self, var, node_j, phase):
         """
