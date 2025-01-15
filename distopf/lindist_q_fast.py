@@ -59,6 +59,11 @@ class LinDistModelQFast:
             "b": self.bus.loc[self.bus.phases.str.contains("b")].index.to_numpy(),
             "c": self.bus.loc[self.bus.phases.str.contains("c")].index.to_numpy(),
         }
+        self.load_buses = {
+            "a": self.all_buses["a"][np.where(self.all_buses["a"] != self.swing_bus)],
+            "b": self.all_buses["b"][np.where(self.all_buses["b"] != self.swing_bus)],
+            "c": self.all_buses["c"][np.where(self.all_buses["c"] != self.swing_bus)],
+        }
         self.gen_buses = dict(a=np.array([]), b=np.array([]), c=np.array([]))
         if self.gen.shape[0] > 0:
             self.gen_buses = {

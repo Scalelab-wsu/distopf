@@ -433,7 +433,7 @@ def cvxpy_mi_solve(
     u_c = cp.Variable(shape=(n_u,), name="u_c", value=np.ones(n_u), boolean=True)
     u_idxs = np.r_[m.uc_map["a"], m.uc_map["b"], m.uc_map["c"]]
     gu = [x[u_idxs] == u_c]
-    g_ineq = [csr_array(m.a_ineq) @ x - m.b_ineq.flatten() <= 0]
+    g_ineq = [csr_array(m.a_ub) @ x - m.b_ub.flatten() <= 0]
     g = [csr_array(m.a_eq) @ x - m.b_eq.flatten() == 0]
     lb = [x[i] >= m.bounds[i][0] for i in range(m.n_x)]
     ub = [x[i] <= m.bounds[i][1] for i in range(m.n_x)]
