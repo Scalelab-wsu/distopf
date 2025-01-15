@@ -30,6 +30,36 @@ def gradient_curtail(model):
         c[i] = -1
     return c
 
+def gradient_battery_efficiency(model: LinDistModelMulti, xk: cp.Variable, **kwargs) -> cp.Expression:
+    """
+
+    Parameters
+    ----------
+    model : LinDistModel, or LinDistModelP, or LinDistModelQ
+    xk : cp.Variable
+    kwargs :
+
+    Returns
+    -------
+    f: cp.Expression
+        Expression to be minimized
+
+    """
+    if "start_step" in model.__dict__.keys():
+        start_step = model.start_step
+    else:
+        start_step = 0
+    c = np.zeros(model.n_x)
+    for t in range(start_step, start_step + model.n_steps):
+        for a in "abc":
+            if not model.phase_exists(a):
+                continue
+            charging_efficiency = model.bat.loc[model.charge_map[t][a].index, f"nc_{a}"].to_numpy()
+            discharging_efficiency = model.bat.loc[model.discharge_map[t][a].index, f"nd_{a}"].to_numpy()
+            c[model.charge_map[t][a].to_numpy()] = (1 - charging_efficiency)
+            c[model.discharge_map[t][a].to_numpy()] = ((1 / discharging_efficiency) - 1)
+    return c
+
 
 # ~~~ Quadratic objective with linear constraints for use with solve_quad()~~~
 
