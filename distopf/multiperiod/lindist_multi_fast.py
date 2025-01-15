@@ -642,11 +642,10 @@ class LinDistModelMultiFast:
         nd = self.bat[f"nd_{phase}"].get(j, 1)
         soc0 = self.bat[f"b0_{phase}"].get(j, 0)
         # soc0 = self.bat[f"energy_start_{phase}"].get(j, 0)
-        dt = 1  # 1 hour time step assumed, currently soc is in units of p_base*1hour (default: 1MWh)
-        a_eq[soc_j, discharge_j] = 1 / nd * dt
-        a_eq[soc_j, charge_j] = -nc * dt
+        a_eq[soc_j, discharge_j] = 1 / nd * self.delta_t
+        a_eq[soc_j, charge_j] = -nc * self.delta_t
         a_eq[soc_j, soc_j] = 1
-        if t == 0:
+        if t == self.start_step:
             b_eq[soc_j] = soc0
         else:
             soc_prev = self.idx("soc", j, phase, t=t - 1)
