@@ -8,12 +8,12 @@ from distopf import plot_network, compare_flows, compare_voltages
 from distopf import opf_solver
 from distopf.multiperiod.lindist_base_modular_multi import LinDistModelMulti
 from distopf.multiperiod.lindist_multi_fast import LinDistModelMultiFast
-from distopf import LinDistModel
-from distopf import LinDistModelP
-from distopf import LinDistModelQ
-from distopf.lindist_fast import LinDistModelFast
-from distopf.lindist_q_fast import LinDistModelQFast
-from distopf.lindist_p_fast import LinDistModelPFast
+from distopf import LinDistModelL
+from distopf.dedicated.lindist_p import LinDistModelP
+from distopf.dedicated.lindist_q import LinDistModelQ
+from distopf.lindist import LinDistModel
+from distopf.lindist_q_gen import LinDistModelQGen
+from distopf.lindist_p_gen import LinDistModelPGen
 import distopf as opf
 from distopf import CASES_DIR
 
@@ -26,7 +26,7 @@ cap_data_path = Path("./distopf/test/cap_data.csv")
 reg_data_path = Path("./distopf/test/reg_data.csv")
 
 
-class TestModular(unittest.TestCase):
+class TestModelConsistency(unittest.TestCase):
     def test_loss(self):
         # base_path = CASES_DIR / "csv/2Bus-1ph-batt"
         for start_time in range(0, 24, 6):
@@ -80,7 +80,7 @@ class TestModular(unittest.TestCase):
             bus_data.ql_b *= load_mult
             bus_data.ql_c *= load_mult
 
-            m2 = LinDistModel(
+            m2 = LinDistModelL(
                 branch_data=branch_data,
                 bus_data=bus_data,
                 gen_data=gen_data,
@@ -96,14 +96,14 @@ class TestModular(unittest.TestCase):
                 cap_data=cap_data,
             )
 
-            m4 = LinDistModelFast(
+            m4 = LinDistModel(
                 branch_data=branch_data,
                 bus_data=bus_data,
                 gen_data=gen_data,
                 reg_data=reg_data,
                 cap_data=cap_data,
             )
-            m5 = LinDistModelQFast(
+            m5 = LinDistModelQGen(
                 branch_data=branch_data,
                 bus_data=bus_data,
                 gen_data=gen_data,
@@ -198,7 +198,7 @@ class TestModular(unittest.TestCase):
             bus_data.ql_b *= load_mult
             bus_data.ql_c *= load_mult
 
-            m2 = LinDistModel(
+            m2 = LinDistModelL(
                 branch_data=branch_data,
                 bus_data=bus_data,
                 gen_data=gen_data,
@@ -214,14 +214,14 @@ class TestModular(unittest.TestCase):
                 cap_data=cap_data,
             )
 
-            m4 = LinDistModelFast(
+            m4 = LinDistModel(
                 branch_data=branch_data,
                 bus_data=bus_data,
                 gen_data=gen_data,
                 reg_data=reg_data,
                 cap_data=cap_data,
             )
-            m5 = LinDistModelPFast(
+            m5 = LinDistModelPGen(
                 branch_data=branch_data,
                 bus_data=bus_data,
                 gen_data=gen_data,

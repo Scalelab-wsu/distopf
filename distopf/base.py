@@ -121,6 +121,44 @@ class BaseModel:
         self.x_min = None
         self.x_max = None
 
+    @staticmethod
+    def _init_rx(branch):
+        """
+        Initializes resistance (`r`) and reactance (`x`) data for network branches
+        using sparse matrix representations.
+
+        Parameters
+        ----------
+        branch : pd.DataFrame
+            DataFrame containing branch information.
+
+        Returns
+        -------
+        r, x : dict
+            Dictionaries of csr_arrays for resistance and reactance matrices indexed
+            by phase pairs (e.g., 'aa', 'ab', ...).
+        """
+        row = np.array(np.r_[branch.fb, branch.tb], dtype=int) - 1
+        col = np.array(np.r_[branch.tb, branch.fb], dtype=int) - 1
+        r = {
+            "aa": csr_array((np.r_[branch.raa, branch.raa], (row, col))),
+            "ab": csr_array((np.r_[branch.rab, branch.rab], (row, col))),
+            "ac": csr_array((np.r_[branch.rac, branch.rac], (row, col))),
+            "bb": csr_array((np.r_[branch.rbb, branch.rbb], (row, col))),
+            "bc": csr_array((np.r_[branch.rbc, branch.rbc], (row, col))),
+            "cc": csr_array((np.r_[branch.rcc, branch.rcc], (row, col))),
+        }
+        x = {
+            "aa": csr_array((np.r_[branch.xaa, branch.xaa], (row, col))),
+            "ab": csr_array((np.r_[branch.xab, branch.xab], (row, col))),
+            "ac": csr_array((np.r_[branch.xac, branch.xac], (row, col))),
+            "bb": csr_array((np.r_[branch.xbb, branch.xbb], (row, col))),
+            "bc": csr_array((np.r_[branch.xbc, branch.xbc], (row, col))),
+            "cc": csr_array((np.r_[branch.xcc, branch.xcc], (row, col))),
+        }
+        return r, x
+
+
 class LinDistBase(BaseModel):
     """
     LinDistFlow Model base class for linear power flow modeling.
@@ -181,90 +219,6 @@ class LinDistBase(BaseModel):
     >>> opf.plot_gens(p_gens, q_gens).show()
     """
 
-    # def __init__(
-    #     self,
-    #     branch_data: pd.DataFrame = None,
-    #     bus_data: pd.DataFrame = None,
-    #     gen_data: pd.DataFrame = None,
-    #     cap_data: pd.DataFrame = None,
-    #     reg_data: pd.DataFrame = None,
-    # ):
-    #     # ~~~~~~~~~~~~~~~~~~~~ Load Data Frames ~~~~~~~~~~~~~~~~~~~~
-    #     self.branch = handle_branch_input(branch_data)
-    #     self.bus = handle_bus_input(bus_data)
-    #     self.gen = handle_gen_input(gen_data)
-    #     self.cap = handle_cap_input(cap_data)
-    #     self.reg = handle_reg_input(reg_data)
-    #     self.branch_data = self.branch
-    #     self.bus_data = self.bus
-    #     self.gen_data = self.gen
-    #     self.cap_data = self.cap
-    #     self.reg_data = self.reg
-    #
-    #     # ~~~~~~~~~~~~~~~~~~~~ prepare data ~~~~~~~~~~~~~~~~~~~~
-    #     self.nb = len(self.bus.id)
-    #     self.r, self.x = self._init_rx(self.branch)
-    #     self.swing_bus = self.bus.loc[self.bus.bus_type == "SWING"].index[0]
-    #     self.all_buses = {
-    #         "a": self.bus.loc[self.bus.phases.str.contains("a")].index.to_numpy(),
-    #         "b": self.bus.loc[self.bus.phases.str.contains("b")].index.to_numpy(),
-    #         "c": self.bus.loc[self.bus.phases.str.contains("c")].index.to_numpy(),
-    #     }
-    #     self.load_buses = {
-    #         "a": self.all_buses["a"][np.where(self.all_buses["a"] != self.swing_bus)],
-    #         "b": self.all_buses["b"][np.where(self.all_buses["b"] != self.swing_bus)],
-    #         "c": self.all_buses["c"][np.where(self.all_buses["c"] != self.swing_bus)],
-    #     }
-    #     self.gen_buses = dict(a=np.array([]), b=np.array([]), c=np.array([]))
-    #     if self.gen.shape[0] > 0:
-    #         self.gen_buses = {
-    #             "a": self.gen.loc[self.gen.phases.str.contains("a")].index.to_numpy(),
-    #             "b": self.gen.loc[self.gen.phases.str.contains("b")].index.to_numpy(),
-    #             "c": self.gen.loc[self.gen.phases.str.contains("c")].index.to_numpy(),
-    #         }
-    #         self.n_gens = (
-    #             len(self.gen_buses["a"])
-    #             + len(self.gen_buses["b"])
-    #             + len(self.gen_buses["c"])
-    #         )
-    #     self.cap_buses = dict(a=np.array([]), b=np.array([]), c=np.array([]))
-    #     if self.cap.shape[0] > 0:
-    #         self.cap_buses = {
-    #             "a": self.cap.loc[self.cap.phases.str.contains("a")].index.to_numpy(),
-    #             "b": self.cap.loc[self.cap.phases.str.contains("b")].index.to_numpy(),
-    #             "c": self.cap.loc[self.cap.phases.str.contains("c")].index.to_numpy(),
-    #         }
-    #         self.n_caps = (
-    #             len(self.cap_buses["a"])
-    #             + len(self.cap_buses["b"])
-    #             + len(self.cap_buses["c"])
-    #         )
-    #     self.reg_buses = dict(a=np.array([]), b=np.array([]), c=np.array([]))
-    #     if self.reg.shape[0] > 0:
-    #         self.reg_buses = {
-    #             "a": self.reg.loc[self.reg.phases.str.contains("a")].index.to_numpy(),
-    #             "b": self.reg.loc[self.reg.phases.str.contains("b")].index.to_numpy(),
-    #             "c": self.reg.loc[self.reg.phases.str.contains("c")].index.to_numpy(),
-    #         }
-    #         self.n_regs = (
-    #             len(self.reg_buses["a"])
-    #             + len(self.reg_buses["b"])
-    #             + len(self.reg_buses["c"])
-    #         )
-    #     # ~~ initialize index pointers ~~
-    #     self.x_maps, self.n_x = self._variable_tables(self.branch)
-    #     self.v_map, self.n_x = self._add_device_variables(self.n_x, self.all_buses)
-    #     self.pg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
-    #     self.qg_map, self.n_x = self._add_device_variables(self.n_x, self.gen_buses)
-    #     self.qc_map, self.n_x = self._add_device_variables(self.n_x, self.cap_buses)
-    #     # ~~~~~~~~~~~~~~~~~~~~ initialize Aeq and beq ~~~~~~~~~~~~~~~~~~~~
-    #     self.a_eq, self.b_eq = None, None
-    #     self.a_ub, self.b_ub = None, None
-    #     self.bounds = None
-    #     self.bounds_tuple = None
-    #     self.x_min = None
-    #     self.x_max = None
-
     def initialize_variable_index_pointers(self):
         self.x_maps, self.n_x = self._variable_tables(self.branch)
         self.v_map, self.n_x = self._add_device_variables(self.n_x, self.all_buses)
@@ -280,43 +234,6 @@ class LinDistBase(BaseModel):
         self.bounds_tuple = list(map(tuple, self.bounds))
         self.x_min = self.bounds[:, 0]
         self.x_max = self.bounds[:, 1]
-
-    @staticmethod
-    def _init_rx(branch):
-        """
-        Initializes resistance (`r`) and reactance (`x`) data for network branches
-        using sparse matrix representations.
-
-        Parameters
-        ----------
-        branch : pd.DataFrame
-            DataFrame containing branch information.
-
-        Returns
-        -------
-        r, x : dict
-            Dictionaries of csr_arrays for resistance and reactance matrices indexed
-            by phase pairs (e.g., 'aa', 'ab', ...).
-        """
-        row = np.array(np.r_[branch.fb, branch.tb], dtype=int) - 1
-        col = np.array(np.r_[branch.tb, branch.fb], dtype=int) - 1
-        r = {
-            "aa": csr_array((np.r_[branch.raa, branch.raa], (row, col))),
-            "ab": csr_array((np.r_[branch.rab, branch.rab], (row, col))),
-            "ac": csr_array((np.r_[branch.rac, branch.rac], (row, col))),
-            "bb": csr_array((np.r_[branch.rbb, branch.rbb], (row, col))),
-            "bc": csr_array((np.r_[branch.rbc, branch.rbc], (row, col))),
-            "cc": csr_array((np.r_[branch.rcc, branch.rcc], (row, col))),
-        }
-        x = {
-            "aa": csr_array((np.r_[branch.xaa, branch.xaa], (row, col))),
-            "ab": csr_array((np.r_[branch.xab, branch.xab], (row, col))),
-            "ac": csr_array((np.r_[branch.xac, branch.xac], (row, col))),
-            "bb": csr_array((np.r_[branch.xbb, branch.xbb], (row, col))),
-            "bc": csr_array((np.r_[branch.xbc, branch.xbc], (row, col))),
-            "cc": csr_array((np.r_[branch.xcc, branch.xcc], (row, col))),
-        }
-        return r, x
 
     @staticmethod
     def _variable_tables(branch, n_x=0):
@@ -824,11 +741,11 @@ class LinDistBase(BaseModel):
         v_df.loc[:, ["a", "b", "c"]] = v_df.loc[:, ["a", "b", "c"]] ** 0.5
         return v_df
 
-    def get_q_gens(self, x):
-        return self.get_device_variables(x, self.qg_map)
-
     def get_p_gens(self, x):
         return self.get_device_variables(x, self.pg_map)
+
+    def get_q_gens(self, x):
+        return self.get_device_variables(x, self.qg_map)
 
     def get_q_caps(self, x):
         return self.get_device_variables(x, self.qc_map)

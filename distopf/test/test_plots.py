@@ -1,7 +1,7 @@
 import distopf as opf
 import unittest
 import pandas as pd
-from distopf import LinDistModel
+from distopf import LinDistModelL
 from distopf import CASES_DIR
 
 
@@ -16,7 +16,7 @@ class TestPlots(unittest.TestCase):
         bus_data.v_a = 1.0
         bus_data.v_b = 1.0
         bus_data.v_c = 1.0
-        m = LinDistModel(
+        m = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -41,7 +41,7 @@ class TestPlots(unittest.TestCase):
         bus_data.v_a = 1.0
         bus_data.v_b = 1.0
         bus_data.v_c = 1.0
-        m = LinDistModel(
+        m = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -63,7 +63,7 @@ class TestPlots(unittest.TestCase):
         bus_data.v_a = 1.0
         bus_data.v_b = 1.0
         bus_data.v_c = 1.0
-        m = LinDistModel(
+        m = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -85,7 +85,7 @@ class TestPlots(unittest.TestCase):
         bus_data.v_a = 1.0
         bus_data.v_b = 1.0
         bus_data.v_c = 1.0
-        m = LinDistModel(
+        m = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -93,7 +93,7 @@ class TestPlots(unittest.TestCase):
             cap_data=cap_data,
         )
         gen_data.control_variable = opf.CONTROL_PQ
-        m2 = LinDistModel(
+        m2 = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -117,7 +117,7 @@ class TestPlots(unittest.TestCase):
         bus_data.v_a = 1.0
         bus_data.v_b = 1.0
         bus_data.v_c = 1.0
-        m = LinDistModel(
+        m = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -125,7 +125,7 @@ class TestPlots(unittest.TestCase):
             cap_data=cap_data,
         )
         gen_data.control_variable = opf.CONTROL_PQ
-        m2 = LinDistModel(
+        m2 = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -149,7 +149,7 @@ class TestPlots(unittest.TestCase):
         bus_data.v_a = 1.0
         bus_data.v_b = 1.0
         bus_data.v_c = 1.0
-        m = LinDistModel(
+        m = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -171,7 +171,7 @@ class TestPlots(unittest.TestCase):
         bus_data.v_a = 1.0
         bus_data.v_b = 1.0
         bus_data.v_c = 1.0
-        m = LinDistModel(
+        m = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -179,7 +179,7 @@ class TestPlots(unittest.TestCase):
             cap_data=cap_data,
         )
         gen_data.control_variable = opf.CONTROL_PQ
-        m2 = LinDistModel(
+        m2 = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,
@@ -203,7 +203,7 @@ class TestPlots(unittest.TestCase):
         bus_data.v_a = 1.0
         bus_data.v_b = 1.0
         bus_data.v_c = 1.0
-        m = LinDistModel(
+        m = LinDistModelL(
             branch_data=branch_data,
             bus_data=bus_data,
             gen_data=gen_data,

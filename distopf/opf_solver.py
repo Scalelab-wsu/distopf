@@ -7,12 +7,13 @@ from scipy.optimize import OptimizeResult, linprog
 from scipy.sparse import csr_array
 import distopf as opf
 from distopf import (
-    LinDistModel,
+    LinDistModelL,
     LinDistModelCapMI,
 )
+from distopf.base import LinDistBase
 
 
-def gradient_load_min(model: LinDistModel, *args, **kwargs) -> np.ndarray:
+def gradient_load_min(model: LinDistBase, *args, **kwargs) -> np.ndarray:
     """
     Gradient of the objective function to minimize the load at the substation.
     c has a 1 for each active power flow out of the substation.
@@ -32,7 +33,7 @@ def gradient_load_min(model: LinDistModel, *args, **kwargs) -> np.ndarray:
     return c
 
 
-def gradient_curtail(model: LinDistModel, *args, **kwargs) -> np.ndarray:
+def gradient_curtail(model: LinDistBase, *args, **kwargs) -> np.ndarray:
     """
     Gradient of the objective function to minimize curtailment of DERs.
     Parameters
@@ -62,7 +63,7 @@ def gradient_curtail(model: LinDistModel, *args, **kwargs) -> np.ndarray:
 
 
 # ~~~ Quadratic objective with linear constraints for use with solve_quad()~~~
-def cp_obj_loss(model: LinDistModel, xk: cp.Variable, **kwargs) -> cp.Expression:
+def cp_obj_loss(model: LinDistBase, xk: cp.Variable, **kwargs) -> cp.Expression:
     """
 
     Parameters
@@ -96,7 +97,7 @@ def cp_obj_loss(model: LinDistModel, xk: cp.Variable, **kwargs) -> cp.Expression
         return np.vdot(r, xk[ix]**2)
 
 
-def cp_obj_loss_old(model: LinDistModel, xk: cp.Variable, **kwargs) -> cp.Expression:
+def cp_obj_loss_old(model: LinDistBase, xk: cp.Variable, **kwargs) -> cp.Expression:
     """
 
     Parameters
@@ -126,7 +127,7 @@ def cp_obj_loss_old(model: LinDistModel, xk: cp.Variable, **kwargs) -> cp.Expres
 
 
 def cp_obj_target_p_3ph(
-    model: LinDistModel, xk: cp.Variable, **kwargs
+    model: LinDistBase, xk: cp.Variable, **kwargs
 ) -> cp.Expression:
     """
 
@@ -160,7 +161,7 @@ def cp_obj_target_p_3ph(
 
 
 def cp_obj_target_p_total(
-    model: LinDistModel | LinDistModel, xk: cp.Variable, **kwargs
+    model: LinDistBase, xk: cp.Variable, **kwargs
 ) -> cp.Expression:
     """
 
@@ -194,7 +195,7 @@ def cp_obj_target_p_total(
 
 
 def cp_obj_target_q_3ph(
-    model: LinDistModel, xk: cp.Variable, **kwargs
+    model: LinDistBase, xk: cp.Variable, **kwargs
 ) -> cp.Expression:
     """
 
@@ -227,7 +228,7 @@ def cp_obj_target_q_3ph(
 
 
 def cp_obj_target_q_total(
-    model: LinDistModel, xk: cp.Variable, **kwargs
+    model: LinDistBase, xk: cp.Variable, **kwargs
 ) -> cp.Expression:
     """
     Parameters
@@ -280,7 +281,7 @@ def cp_obj_target_q_total(
 
 
 def cp_obj_curtail(
-    model: LinDistModel, xk: cp.Variable, **kwargs
+    model: LinDistBase, xk: cp.Variable, **kwargs
 ) -> cp.Expression:
     """
     Objective function to minimize curtailment of DERs.
@@ -309,7 +310,7 @@ def cp_obj_curtail(
 
 
 def cp_obj_curtail_lp(
-    model: LinDistModel, xk: cp.Variable, **kwargs
+    model: LinDistBase, xk: cp.Variable, **kwargs
 ) -> cp.Expression:
     """
     Objective function to minimize curtailment of DERs.
@@ -349,7 +350,7 @@ def cp_obj_none(*args, **kwargs) -> cp.Constant:
 
 
 def cvxpy_solve(
-    model: LinDistModel,
+    model: LinDistBase,
     obj_func: Callable,
     **kwargs,
 ) -> OptimizeResult:
@@ -465,7 +466,7 @@ def pf(model) -> OptimizeResult:
 
 
 def lp_solve(
-    model: LinDistModel,
+    model: LinDistBase,
     c: np.ndarray | Callable = None,
     **kwargs,
 ) -> OptimizeResult:
@@ -474,7 +475,7 @@ def lp_solve(
         Min c^T x
     Parameters
     ----------
-    model : LinDistModel
+    model : LinDistBase
     c :  1-D array
         The coefficients of the linear objective function to be minimized.
     Returns
@@ -532,7 +533,7 @@ def lp_solve(
     return res
 
 def pyomo_solve(
-    model: LinDistModel,
+    model: LinDistBase,
     obj_func: Callable,
     **kwargs,
 ) -> OptimizeResult:

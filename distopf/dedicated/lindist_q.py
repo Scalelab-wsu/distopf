@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from numpy import sqrt, zeros
 from scipy.sparse import csr_array
-from distopf.lindist_base import LinDistModel, get
+from distopf.dedicated.lindist_pf import LinDistModelPF, get
 
 
 # bus_type options
@@ -15,9 +15,9 @@ SWING_BUS = "SWING"
 PQ_BUS = "PQ"
 
 
-class LinDistModelP(LinDistModel):
+class LinDistModelQ(LinDistModelPF):
     """
-    LinDistFlow Model with DER Active Power Injection as control variables.
+    LinDistFlow Model with DER Reactive Power Injection as control variables.
 
     Parameters
     ----------
@@ -42,7 +42,7 @@ class LinDistModelP(LinDistModel):
         cap_data: pd.DataFrame = None,
         reg_data: pd.DataFrame = None,
     ):
-        DeprecationWarning("LinDistModelP is deprecated. Use LinDistModelPFast instead.")
+        DeprecationWarning("LinDistModelQ is deprecated. Use LinDistModelQFast instead.")
         super().__init__(
             branch_data, bus_data, gen_data, cap_data=cap_data, reg_data=reg_data
         )
@@ -101,28 +101,28 @@ class LinDistModelP(LinDistModel):
                 )
                 # ~~ DER limits  ~~:
                 for i in range(self.der_bus[ph].shape[0]):
-                    i_p = self.der_start_phase_idx[ph] + i
+                    i_q = self.der_start_phase_idx[ph] + i
                     # reactive power bounds
-                    p_out = gen["p" + ph]
-                    p_max = p_out
-                    p_min = p_out * 0
-                    # active power bounds
-                    x_lim_lower[i_p] = p_min[self.der_bus[ph][i]]
-                    x_lim_upper[i_p] = p_max[self.der_bus[ph][i]]
+                    s_rated: pd.Series = gen[f"s{ph}_max"]
+                    p_out: pd.Series = gen[f"p{ph}"]
+                    q_min: pd.Series = -(((s_rated**2) - (p_out**2)) ** (1 / 2))
+                    q_max: pd.Series = ((s_rated**2) - (p_out**2)) ** (1 / 2)
+                    x_lim_lower[i_q] = q_min[self.der_bus[ph][i]]
+                    x_lim_upper[i_q] = q_max[self.der_bus[ph][i]]
         bounds = [(l, u) for (l, u) in zip(x_lim_lower, x_lim_upper)]
         return bounds
 
     @cache
     def idx(self, var, node_j, phase):
-        if var == "pg":
+        if var == "pg":  # active power generation at node
+            raise ValueError("pg is fixed and is not a valid variable.")
+        if var == "qg":  # reactive power generation at node
             if node_j in set(self.der_bus[phase]):
                 return (
                     self.der_start_phase_idx[phase]
                     + np.where(self.der_bus[phase] == node_j)[0]
                 )
             return []
-        if var == "qg":
-            raise ValueError("qg is fixed and is not a valid variable.")
         if var == "pl":  # active power exported at node (not root node)
             if node_j in set(self.controlled_load_buses[phase]):
                 return (
@@ -188,15 +188,15 @@ class LinDistModelP(LinDistModel):
                 a_eq[p_eqn, col("pij", a)] = 1
                 a_eq[p_eqn, col("vj", a)] = -(bus.cvr_p[j] / 2) * p_load
                 a_eq[p_eqn, children("pij", a)] = -1
-                a_eq[p_eqn, col("pg", a)] = 1
                 # Set P equation constant in b_eq
-                b_eq[p_eqn] = (1 - (bus.cvr_p[j] / 2)) * p_load
+                b_eq[p_eqn] = (1 - (bus.cvr_p[j] / 2)) * p_load - p_gen
                 # Set Q equation variable coefficients in a_eq
                 a_eq[q_eqn, col("qij", a)] = 1
                 a_eq[q_eqn, col("vj", a)] = -(bus.cvr_q[j] / 2) * q_load + q_cap
                 a_eq[q_eqn, children("qij", a)] = -1
+                a_eq[q_eqn, col("qg", a)] = 1
                 # Set Q equation constant in b_eq
-                b_eq[q_eqn] = (1 - (bus.cvr_q[j] / 2)) * q_load - q_gen
+                b_eq[q_eqn] = (1 - (bus.cvr_q[j] / 2)) * q_load
 
                 # Set V equation variable coefficients in a_eq and constants in b_eq
                 i = self.idx("bi", j, a)[0]
@@ -308,14 +308,15 @@ class LinDistModelP(LinDistModel):
                 # Set P equation variable coefficients in a_eq
                 if bus_update:
                     a_eq[p_eqn, col("vj", a)] = -(bus.cvr_p[j] / 2) * p_load
-                    # Set P equation constant in b_eq
-                    b_eq[p_eqn] = (1 - (bus.cvr_p[j] / 2)) * p_load
+                # Set P equation constant in b_eq
+                if bus_update or gen_update:
+                    b_eq[p_eqn] = (1 - (bus.cvr_p[j] / 2)) * p_load - p_gen
                 # Set Q equation variable coefficients in a_eq
                 if bus_update or cap_update:
-                    a_eq[q_eqn, col("vj", a)] = -(bus.cvr_q[j] / 2) * q_load + q_cap
+                    a_eq[q_eqn, col("vj", a)] = -(bus.cvr_q[j] / 2) * q_load - q_cap
                 # Set Q equation constant in b_eq
-                if bus_update or gen_update:
-                    b_eq[q_eqn] = (1 - (bus.cvr_q[j] / 2)) * q_load - q_gen
+                if bus_update:
+                    b_eq[q_eqn] = (1 - (bus.cvr_q[j] / 2)) * q_load
 
                 # Set V equation variable coefficients in a_eq and constants in b_eq
 

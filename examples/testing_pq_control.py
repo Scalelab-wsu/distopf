@@ -7,12 +7,12 @@ import cvxpy as cp
 from time import perf_counter
 
 
-class Hexagon(opf.LinDistModel):
+class Hexagon(opf.LinDistModelL):
     def create_inequality_constraints(self):
         return self.create_hexagon_constraints()
 
 
-class Octogon(opf.LinDistModel):
+class Octogon(opf.LinDistModelL):
     def create_inequality_constraints(self):
         return self.create_octagon_constraints()
 
