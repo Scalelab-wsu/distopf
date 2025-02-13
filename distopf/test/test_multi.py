@@ -13,15 +13,6 @@ import distopf as opf
 from distopf import CASES_DIR
 
 
-branchdata_path = Path("./distopf/test/branch_data.csv")
-powerdata_path = Path("./distopf/test/powerdata.csv")
-legacy_powerdata_path = Path("./distopf/test/legacy/powerdata.csv")
-bus_data_path = Path("./distopf/test/bus_data.csv")
-gen_data_path = Path("./distopf/test/gen_data.csv")
-cap_data_path = Path("./distopf/test/cap_data.csv")
-reg_data_path = Path("./distopf/test/reg_data.csv")
-
-
 # def compare_voltages(v1: pd.DataFrame, v2: pd.DataFrame):
 #     """
 #     Visually compare voltages by plotting two different results.

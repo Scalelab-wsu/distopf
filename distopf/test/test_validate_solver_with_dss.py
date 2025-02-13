@@ -8,13 +8,12 @@ from distopf import opf_solver, DSSParser
 from distopf.lindist_p_gen import LinDistModelPGen
 from distopf.lindist_q_gen import LinDistModelQGen
 import distopf as opf
+from distopf.test import TEST_DIR
 
-branchdata_path = Path("./branch_data.csv")
-powerdata_path = Path("./powerdata.csv")
-bus_data_path = Path("./bus_data.csv")
-gen_data_path = Path("./gen_data.csv")
-cap_data_path = Path("./cap_data.csv")
-reg_data_path = Path("./reg_data.csv")
+bus_data_path = TEST_DIR / Path("bus_data.csv")
+gen_data_path = TEST_DIR / Path("gen_data.csv")
+cap_data_path = TEST_DIR / Path("cap_data.csv")
+reg_data_path = TEST_DIR / Path("reg_data.csv")
 assert bus_data_path.exists()
 
 
