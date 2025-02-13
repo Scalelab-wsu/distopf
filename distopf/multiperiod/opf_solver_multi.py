@@ -441,7 +441,7 @@ def cvxpy_mi_solve(
 
 
 def lp_solve(
-    model: LinDistModelMulti | LinDistModelMultiFast, c: np.ndarray = None
+    model: (LinDistModelMulti, LinDistModelMultiFast), c: np.ndarray = None
 ) -> OptimizeResult:
     """
     Solve a linear program using scipy.optimize.linprog and having the objective function:

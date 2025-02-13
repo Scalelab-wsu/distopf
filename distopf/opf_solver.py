@@ -449,7 +449,7 @@ def pf(model) -> OptimizeResult:
 
 def lp_solve(
     model: LinDistBase,
-    c: np.ndarray | Callable = None,
+    c: (np.ndarray, Callable) = None,
     **kwargs,
 ) -> OptimizeResult:
     """

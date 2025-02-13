@@ -9,13 +9,13 @@ from distopf.lindist_p_gen import LinDistModelPGen
 from distopf.lindist_q_gen import LinDistModelQGen
 import distopf as opf
 
-branchdata_path = Path("branch_data.csv")
-powerdata_path = Path("powerdata.csv")
-legacy_powerdata_path = Path("legacy/powerdata.csv")
-bus_data_path = Path("bus_data.csv")
-gen_data_path = Path("gen_data.csv")
-cap_data_path = Path("cap_data.csv")
-reg_data_path = Path("reg_data.csv")
+branchdata_path = Path("./branch_data.csv")
+powerdata_path = Path("./powerdata.csv")
+bus_data_path = Path("./bus_data.csv")
+gen_data_path = Path("./gen_data.csv")
+cap_data_path = Path("./cap_data.csv")
+reg_data_path = Path("./reg_data.csv")
+assert bus_data_path.exists()
 
 
 def max_flow_difference(s1: pd.DataFrame, s2: pd.DataFrame) -> float:
