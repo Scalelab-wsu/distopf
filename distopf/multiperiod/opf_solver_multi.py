@@ -5,9 +5,6 @@ import cvxpy as cp
 import numpy as np
 from scipy.optimize import OptimizeResult, linprog
 from scipy.sparse import csr_array
-from distopf.multiperiod.deprecated.lindist_p_multi import LinDistModelP
-from distopf.multiperiod.deprecated.lindist_q_multi import LinDistModelQ
-from distopf.multiperiod.deprecated.lindist_base_multi import LinDistModel
 from distopf.multiperiod.lindist_base_modular_multi import LinDistModelMulti
 from distopf.multiperiod.lindist_multi_fast import LinDistModelMultiFast
 
@@ -179,59 +176,6 @@ def cp_obj_loss_batt(
     return cp_obj_loss(model, xk) + cp_battery_efficiency(model, xk)
 
 
-def cp_obj_loss_deprecated(
-    model: LinDistModel, xk: cp.Variable, **kwargs
-) -> cp.Expression:
-    """
-
-    Parameters
-    ----------
-    model : LinDistModel, or LinDistModelP, or LinDistModelQ
-    xk : cp.Variable
-    kwargs :
-
-    Returns
-    -------
-    f: cp.Expression
-        Expression to be minimized
-
-    """
-    c = np.zeros(model.n_x)
-    f_list = []
-    for t in range(model.n_steps):
-        for j in range(1, model.nb):
-            for a in "abc":
-                if model.phase_exists(a, index=j, t=t):
-                    i = model.idx("bi", j, a, t=t)[0]
-                    f_list.append(
-                        model.r[a + a][i, j] * (xk[model.idx("pij", j, a, t=t)[0]] ** 2)
-                    )
-                    f_list.append(
-                        model.r[a + a][i, j] * (xk[model.idx("qij", j, a, t=t)[0]] ** 2)
-                    )
-                    if model.battery:
-                        try:
-                            dis = model.idx("discharge", j, a, t=t)
-                        except KeyError:
-                            dis = model.idx("pd", j, a, t=t)
-                        try:
-                            ch = model.idx("charge", j, a, t=t)
-                        except KeyError:
-                            ch = model.idx("pc", j, a, t=t)
-
-                        if ch:
-                            f_list.append(
-                                1e-3 * (1 - model.bat["nc_" + a].get(j, 1)) * (xk[ch])
-                            )
-                        if dis:
-                            f_list.append(
-                                1e-3
-                                * ((1 / model.bat["nd_" + a].get(j, 1)) - 1)
-                                * (xk[dis])
-                            )
-    return cp.sum(f_list)
-
-
 def charge_batteries(model, xk, **kwargs) -> cp.Expression:
     f_list = []
     for t in range(model.n_steps):
@@ -241,70 +185,70 @@ def charge_batteries(model, xk, **kwargs) -> cp.Expression:
             f_list.append(-cp.sum(xk[model.soc_map[t][a].to_numpy()]))
     return cp.sum(f_list)
 
-
-def peak_shave(model, xk):
-    f: cp.Expression = 0
-    subs = []
-    for t in range(LinDistModelQ.n):
-        ph = 0
-        for a in "abc":
-            ph += xk[model.idx("pij", model.swing_bus + 1, a, t)[0]]
-        subs.append(ph)
-        for j in range(1, model.nb):
-            for a in "abc":
-                if model.phase_exists(a, t, j):
-                    if LinDistModelQ.battery:
-                        dis = model.idx("pd", j, a, t)
-                        ch = model.idx("pc", j, a, t)
-                        if ch:
-                            f += 1e-3 * (1 - model.bat["nc_" + a].get(j, 1)) * (xk[ch])
-                        if dis:
-                            f += (
-                                1e-3
-                                * ((1 / model.bat["nd_" + a].get(j, 1)) - 1)
-                                * (xk[dis])
-                            )
-                        # if dis:
-                        #     f += 1e-5*((1/model.bat["nd_" + a].get(j,0))-model.bat["nc_" + a].get(j,0)) * (xk[dis])
-    f += cp.max(cp.hstack(subs))
-    return f
-
-
-peak_h = [17, 18, 19, 20, 21]
-peak_price = 19
-off_peak_price = 7
-
-
-def cost_min(model, xk):
-    f: cp.Expression = 0
-    for t in range(LinDistModelQ.n):
-        if t in peak_h:
-            peak = 0
-            for a in "abc":
-                peak += xk[model.idx("pij", model.swing_bus + 1, a, t)[0]]
-            f += peak * peak_price * 10
-        else:
-            off_peak = 0
-            for a in "abc":
-                off_peak += xk[model.idx("pij", model.swing_bus + 1, a, t)[0]]
-            f += off_peak * off_peak_price * 10
-        for j in range(1, model.nb):
-            for a in "abc":
-                if model.phase_exists(a, t, j):
-                    if LinDistModelQ.battery:
-                        dis = model.idx("pd", j, a, t)
-                        ch = model.idx("pc", j, a, t)
-                        if ch:
-                            f += 1e-3 * (1 - model.bat["nc_" + a].get(j, 1)) * (xk[ch])
-                        if dis:
-                            f += (
-                                1e-3
-                                * ((1 / model.bat["nd_" + a].get(j, 1)) - 1)
-                                * (xk[dis])
-                            )
-                        # if dis:
-                        #     f += 1e-3*((1/model.bat["nd_" + a].get(j,0))-model.bat["nc_" + a].get(j,0)) * (xk[dis])
-    return f
+#
+# def peak_shave(model, xk):
+#     f: cp.Expression = 0
+#     subs = []
+#     for t in range(LinDistModelQ.n):
+#         ph = 0
+#         for a in "abc":
+#             ph += xk[model.idx("pij", model.swing_bus + 1, a, t)[0]]
+#         subs.append(ph)
+#         for j in range(1, model.nb):
+#             for a in "abc":
+#                 if model.phase_exists(a, t, j):
+#                     if LinDistModelQ.battery:
+#                         dis = model.idx("pd", j, a, t)
+#                         ch = model.idx("pc", j, a, t)
+#                         if ch:
+#                             f += 1e-3 * (1 - model.bat["nc_" + a].get(j, 1)) * (xk[ch])
+#                         if dis:
+#                             f += (
+#                                 1e-3
+#                                 * ((1 / model.bat["nd_" + a].get(j, 1)) - 1)
+#                                 * (xk[dis])
+#                             )
+#                         # if dis:
+#                         #     f += 1e-5*((1/model.bat["nd_" + a].get(j,0))-model.bat["nc_" + a].get(j,0)) * (xk[dis])
+#     f += cp.max(cp.hstack(subs))
+#     return f
+#
+#
+# peak_h = [17, 18, 19, 20, 21]
+# peak_price = 19
+# off_peak_price = 7
+#
+#
+# def cost_min(model, xk):
+#     f: cp.Expression = 0
+#     for t in range(LinDistModelQ.n):
+#         if t in peak_h:
+#             peak = 0
+#             for a in "abc":
+#                 peak += xk[model.idx("pij", model.swing_bus + 1, a, t)[0]]
+#             f += peak * peak_price * 10
+#         else:
+#             off_peak = 0
+#             for a in "abc":
+#                 off_peak += xk[model.idx("pij", model.swing_bus + 1, a, t)[0]]
+#             f += off_peak * off_peak_price * 10
+#         for j in range(1, model.nb):
+#             for a in "abc":
+#                 if model.phase_exists(a, t, j):
+#                     if LinDistModelQ.battery:
+#                         dis = model.idx("pd", j, a, t)
+#                         ch = model.idx("pc", j, a, t)
+#                         if ch:
+#                             f += 1e-3 * (1 - model.bat["nc_" + a].get(j, 1)) * (xk[ch])
+#                         if dis:
+#                             f += (
+#                                 1e-3
+#                                 * ((1 / model.bat["nd_" + a].get(j, 1)) - 1)
+#                                 * (xk[dis])
+#                             )
+#                         # if dis:
+#                         #     f += 1e-3*((1/model.bat["nd_" + a].get(j,0))-model.bat["nc_" + a].get(j,0)) * (xk[dis])
+#     return f
 
 
 def cp_obj_target_p_3ph(model, xk, **kwargs):
