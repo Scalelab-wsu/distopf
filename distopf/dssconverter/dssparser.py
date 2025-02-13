@@ -325,8 +325,8 @@ class DSSParser:
             #             * self.dss.Lines.Length()
             #         )
             #         counter = counter + 1
-
-            return np.real(z_matrix), np.imag(z_matrix)
+            #
+            # return np.real(z_matrix), np.imag(z_matrix)
 
     def _get_powers(self):
         n_phases = self.dss.CktElement.NumPhases()
