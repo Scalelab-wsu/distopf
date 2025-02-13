@@ -8,8 +8,21 @@ import json
 import pandas as pd
 import numpy as np
 
-from distopf import DSSParser, CASES_DIR, LinDistModel, LinDistModelP, LinDistModelQ
+from distopf.base import LinDistBase
+from distopf import (
+    DSSParser,
+    CASES_DIR,
+    LinDistModelL,
+    LinDistModelCapMI,
+    LinDistModelCapacitorRegulatorMI,
+)
+from distopf.lindist_p_gen import LinDistModelPGen
+from distopf.lindist_q_gen import LinDistModelQGen
+from distopf.lindist import LinDistModel
+from distopf.lindist_capacitor_mi import LinDistModelCapMI
+from distopf.lindist_capacitor_regulator_mi import LinDistModelCapacitorRegulatorMI
 from distopf.opf_solver import (
+    cp_obj_none,
     cp_obj_loss,
     cp_obj_curtail,
     cp_obj_target_p_3ph,
@@ -21,22 +34,29 @@ from distopf.opf_solver import (
     gradient_curtail,
     lp_solve,
 )
-from distopf.plot import plot_network, plot_voltages, plot_power_flows, plot_ders
-from distopf.lindist_base import (
-    _handle_branch_input,
-    _handle_bus_input,
-    _handle_gen_input,
-    _handle_cap_input,
-    _handle_reg_input,
+from distopf.plot import plot_network, plot_voltages, plot_power_flows, plot_gens
+from distopf.utils import (
+    handle_branch_input,
+    handle_bus_input,
+    handle_gen_input,
+    handle_cap_input,
+    handle_reg_input,
 )
 
 
-def create_model(control_variable: str = "", **kwargs) -> LinDistModel:
+def create_model(
+    control_variable: str = "",
+    control_regulators: bool = False,
+    control_capacitors: bool = False,
+    **kwargs,
+) -> LinDistBase:
     """
     Create the correct LinDistModel object based on the control variable.
     Parameters
     ----------
     control_variable : str, optional : No Control Variables-None, Active Power Control-'p', Reactive Power Control-'q'
+    control_regulators : bool, optional : Default False, if true use mixed integer control of regulators
+    control_capacitors : bool, optional : Default False, if true use mixed integer control of capacitors
     kwargs :
         branch_data : pd.DataFrame
             DataFrame containing branch data (r and x values, limits)
@@ -52,25 +72,31 @@ def create_model(control_variable: str = "", **kwargs) -> LinDistModel:
     -------
     model: LinDistModel, or LinDistModelP, or LinDistModelQ object appropriate for the control variable
     """
+
+    if control_capacitors and not control_regulators:
+        return LinDistModelCapMI(**kwargs)
+    if control_regulators:
+        return LinDistModelCapacitorRegulatorMI(**kwargs)
     if control_variable is None or control_variable == "":
         return LinDistModel(**kwargs)
-    if control_variable.lower() == "p":
-        return LinDistModelP(**kwargs)
-    if control_variable.lower() == "q":
-        return LinDistModelQ(**kwargs)
-
+    if control_variable.upper() == "P":
+        return LinDistModelPGen(**kwargs)
+    if control_variable.upper() == "Q":
+        return LinDistModelQGen(**kwargs)
+    if control_variable.upper() == "PQ":
+        return LinDistModel(**kwargs)
     raise ValueError(
         f"Unknown control variable '{control_variable}'. Valid options are 'P', 'Q' or None"
     )
 
 
-def auto_solve(model, objective_function=None, **kwargs):
+def auto_solve(model: LinDistBase, objective_function=None, **kwargs):
     """
-    Solve with selected objective function and model. Automatically chooses the appropriate
+    Solve with selected objective function and model. Automatically chooses the appropriate function.
 
     Parameters
     ----------
-    model : LinDistModel
+    model : LinDistBase
     objective_function : str or Callable
     kwargs : kwargs to pass to objective function and solver function.
         solver: str
@@ -86,31 +112,36 @@ def auto_solve(model, objective_function=None, **kwargs):
     result: scipy.optimize.OptimizeResult
 
     """
-    solver = kwargs.get("solver", "CLARABEL")
     if objective_function is None:
-        return lp_solve(model, np.zeros(model.n_x))
+        objective_function = np.zeros(model.n_x)
+    if not isinstance(objective_function, (str, Callable, np.ndarray, list)):
+        raise TypeError(
+            "objective_function must be a function handle, array, or string"
+        )
+    objective_function_map_gradient: [str, Callable] = {
+        "gen_max": gradient_curtail,
+        "load_min": gradient_load_min,
+    }
+    objective_function_map: [str, Callable] = {
+        "loss_min": cp_obj_loss,
+        "curtail_min": cp_obj_curtail,
+        "target_p_3ph": cp_obj_target_p_3ph,
+        "target_q_3ph": cp_obj_target_q_3ph,
+        "target_p_total": cp_obj_target_p_total,
+        "target_q_total": cp_obj_target_q_total,
+    }
+    if isinstance(objective_function, str):
+        objective_function = objective_function.lower()
+        if objective_function in objective_function_map.keys():
+            objective_function = objective_function_map[objective_function]
+        if objective_function in objective_function_map_gradient.keys():
+            objective_function = objective_function_map[objective_function](model)
     if isinstance(objective_function, Callable):
+        if hasattr(model, "solve"):
+            return model.solve(objective_function, **kwargs)
         return cvxpy_solve(model, objective_function, **kwargs)
     if isinstance(objective_function, (np.ndarray, list)):
         return lp_solve(model, objective_function)
-    if not isinstance(objective_function, str):
-        raise TypeError("objective_function must be a function handle or a string")
-    if objective_function.lower() == "gen_max":
-        return lp_solve(model, gradient_curtail(model))
-    if objective_function.lower() == "load_min":
-        return lp_solve(model, gradient_load_min(model))
-    if objective_function.lower() == "loss_min":
-        return cvxpy_solve(model, cp_obj_loss, solver=solver)
-    if objective_function.lower() == "curtail_min":
-        return cvxpy_solve(model, cp_obj_curtail, solver=solver)
-    if objective_function.lower() == "target_p_3ph":
-        return cvxpy_solve(model, cp_obj_target_p_3ph, **kwargs)
-    if objective_function.lower() == "target_q_3ph":
-        return cvxpy_solve(model, cp_obj_target_q_3ph, **kwargs)
-    if objective_function.lower() == "target_p_total":
-        return cvxpy_solve(model, cp_obj_target_p_total, **kwargs)
-    if objective_function.lower() == "target_q_total":
-        return cvxpy_solve(model, cp_obj_target_q_total, **kwargs)
 
 
 def _handle_path_input(data_path: Path) -> Path:
@@ -162,11 +193,11 @@ def _get_data_from_path(data_path: Path) -> dict:
         cap_data = dss_parser.cap_data
         reg_data = dss_parser.reg_data
 
-    branch_data = _handle_branch_input(branch_data)
-    bus_data = _handle_bus_input(bus_data)
-    gen_data = _handle_gen_input(gen_data)
-    cap_data = _handle_cap_input(cap_data)
-    reg_data = _handle_reg_input(reg_data)
+    branch_data = handle_branch_input(branch_data)
+    bus_data = handle_bus_input(bus_data)
+    gen_data = handle_gen_input(gen_data)
+    cap_data = handle_cap_input(cap_data)
+    reg_data = handle_reg_input(reg_data)
     return {
         "branch_data": branch_data,
         "bus_data": bus_data,
@@ -208,6 +239,12 @@ class DistOPFCase(object):
         Scale all generator outputs and ratings. Per Unit.
     load_mult:
         Scale all loads.
+    cvr_p:
+        CVR factor for voltage dependent loads. Active power component. cvr_p = (dP/P)/(dV/V)
+        To convert from ZIP parameters, kz, ki, kp: cvr_p = 2kz + 1ki
+    cvr_q:
+        CVR factor for voltage dependent loads. Reactive power component.cvr_q = (dQ/Q)/(dV/V)
+        To convert from ZIP parameters, kz, ki, kp: cvr_q = 2kz + 1ki
     control_variable: str
         Control variable for optimization. Options (case-insensitive):
             None: Power flow only with no optimization. `objective_function` options will be ignored.
@@ -263,8 +300,12 @@ class DistOPFCase(object):
         self.v_min = kwargs.get("v_min")
         self.gen_mult = kwargs.get("gen_mult")
         self.load_mult = kwargs.get("load_mult")
+        self.cvr_p = kwargs.get("cvr_p")
+        self.cvr_q = kwargs.get("cvr_q")
 
-        self.control_variable = kwargs.get("control_variable", "")
+        self.control_variable = kwargs.get("control_variable")
+        self.control_regulators = kwargs.get("control_regulators", False)
+        self.control_capacitors = kwargs.get("control_capacitors", False)
         self.objective_function = kwargs.get("objective_function")
         self.target = kwargs.get("target")
         self.error_percent = kwargs.get("error_percent")
@@ -291,15 +332,15 @@ class DistOPFCase(object):
             self.cap_data = case_data["cap_data"]
             self.reg_data = case_data["reg_data"]
         if kwargs.get("branch_data") is not None:
-            self.branch_data = _handle_branch_input(kwargs.get("branch_data"))
+            self.branch_data = handle_branch_input(kwargs.get("branch_data"))
         if kwargs.get("bus_data") is not None:
-            self.bus_data = _handle_bus_input(kwargs.get("bus_data"))
+            self.bus_data = handle_bus_input(kwargs.get("bus_data"))
         if kwargs.get("gen_data") is not None:
-            self.gen_data = _handle_gen_input(kwargs.get("gen_data"))
+            self.gen_data = handle_gen_input(kwargs.get("gen_data"))
         if kwargs.get("cap_data") is not None:
-            self.cap_data = _handle_cap_input(kwargs.get("cap_data"))
+            self.cap_data = handle_cap_input(kwargs.get("cap_data"))
         if kwargs.get("reg_data") is not None:
-            self.reg_data = _handle_reg_input(kwargs.get("reg_data"))
+            self.reg_data = handle_reg_input(kwargs.get("reg_data"))
         if self.branch_data is None or self.bus_data is None:
             raise ValueError(
                 "At least one of branch_data or bus_data was not found. "
@@ -312,6 +353,15 @@ class DistOPFCase(object):
             self.gen_data.loc[:, ["pa", "pb", "pc"]] *= self.gen_mult
             self.gen_data.loc[:, ["qa", "qb", "qc"]] *= self.gen_mult
             self.gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= self.gen_mult
+        if self.control_variable is not None and self.gen_data is not None:
+            if self.control_variable == "":
+                self.gen_data.control_variable = "P"
+            if self.control_variable.upper() == "P":
+                self.gen_data.control_variable = "P"
+            if self.control_variable.upper() == "Q":
+                self.gen_data.control_variable = "Q"
+            if self.control_variable.upper() == "PQ":
+                self.gen_data.control_variable = "PQ"
         if self.load_mult is not None:
             self.bus_data.loc[
                 :, ["pl_a", "ql_a", "pl_b", "ql_b", "pl_c", "ql_c"]
@@ -324,14 +374,19 @@ class DistOPFCase(object):
             self.bus_data.loc[:, "v_min"] = self.v_min
         if self.v_max is not None:
             self.bus_data.loc[:, "v_max"] = self.v_max
-
+        if self.cvr_p is not None:
+            self.bus_data.loc[:, "cvr_p"] = self.cvr_p
+        if self.cvr_q is not None:
+            self.bus_data.loc[:, "cvr_q"] = self.cvr_q
         self.model = None
         self.results = None
         self.voltages_df = None
         self.power_flows_df = None
         self.decision_variables_df = None
+        self.p_gens = None
+        self.q_gens = None
 
-    def run_pf(self):
+    def run_pf(self, raw_result=False):
         """
         Run the unconstrained power flow, save and plot the results.
         Returns
@@ -342,82 +397,46 @@ class DistOPFCase(object):
         bus_data = self.bus_data.copy()
         bus_data.loc[:, "v_min"] = 0.0
         bus_data.loc[:, "v_max"] = 2.0
+        if self.gen_data is not None:
+            gen_data = self.gen_data.copy()
+            gen_data.control_variable = ""
+        else:
+            gen_data = None
         # Create model
         self.model = create_model(
             "",
             branch_data=self.branch_data,
             bus_data=bus_data,
-            gen_data=self.gen_data,
+            gen_data=gen_data,
             cap_data=self.cap_data,
             reg_data=self.reg_data,
         )
         # Solve
         result = auto_solve(self.model)
+        if raw_result:
+            return result
 
         self.voltages_df = self.model.get_voltages(result.x)
         self.power_flows_df = self.model.get_apparent_power_flows(result.x)
-        fig1 = plot_network(
-            self.model, self.voltages_df, self.power_flows_df, show_reactive_power=False
-        )
-        fig2 = plot_power_flows(self.power_flows_df)
-        fig3 = plot_voltages(self.voltages_df)
+        self.p_gens = self.model.get_p_gens(result.x)
+        self.q_gens = self.model.get_q_gens(result.x)
 
         if self.save_inputs:
-            config_parameters = {
-                "objective_function": str(self.objective_function),
-                "control_variable": self.control_variable,
-            }
-            if not self.output_dir.exists():
-                self.output_dir.mkdir()
-            case_data_dir = Path(self.output_dir) / "case_data"
-            if not case_data_dir.exists():
-                case_data_dir.mkdir()
-            with open(Path(self.output_dir) / "case_data" / "config.json", "w") as f:
-                json.dump(config_parameters, f, ensure_ascii=False, indent=4)
-            self.branch_data.to_csv(
-                Path(self.output_dir) / "case_data" / "branch_data.csv", index=False
-            )
-            self.bus_data.to_csv(
-                Path(self.output_dir) / "case_data" / "bus_data.csv", index=False
-            )
-
-            if self.gen_data is not None:
-                self.gen_data.to_csv(
-                    Path(self.output_dir) / "case_data" / "gen_data.csv", index=False
-                )
-
-            if self.cap_data is not None:
-                self.cap_data.to_csv(
-                    Path(self.output_dir) / "case_data" / "cap_data.csv", index=False
-                )
-
-            if self.reg_data is not None:
-                self.reg_data.to_csv(
-                    Path(self.output_dir) / "case_data" / "reg_data.csv", index=False
-                )
+            self.save_input_data()
         if self.save_results:
-            if not self.output_dir.exists():
-                self.output_dir.mkdir()
-            self.voltages_df.to_csv(
-                Path(self.output_dir) / "node_voltages.csv", index=False
-            )
-            self.power_flows_df.to_csv(
-                Path(self.output_dir) / "power_flows.csv", index=False
-            )
-            self.decision_variables_df.to_csv(
-                Path(self.output_dir) / "decision_variables.csv", index=False
-            )
-        if self.save_plots:
-            fig1.write_html(self.output_dir / "network_plot.html")
-            fig2.write_html(self.output_dir / "power_flow_plot.html")
-            fig3.write_html(self.output_dir / "voltage_plot.html")
-        if self.show_plots:
-            fig1.show(renderer="browser")
-            fig2.show(renderer="browser")
-            fig3.show(renderer="browser")
+            self.save_result_data()
+        if self.save_plots or self.show_plots:
+            self.make_plots()
         return self.voltages_df, self.power_flows_df
 
-    def run(self):
+    def run(
+        self,
+        objective_function=None,
+        control_regulators=False,
+        control_capacitors=False,
+        raw_result=False,
+        **kwargs,
+    ):
         """
         Run the optimization, save and plot the results.
         Returns
@@ -429,84 +448,95 @@ class DistOPFCase(object):
 
         # Create model
         self.model = create_model(
-            self.control_variable,
+            control_variable=self.control_variable,
+            control_regulators=control_regulators,
+            control_capacitors=control_capacitors,
             branch_data=self.branch_data,
             bus_data=self.bus_data,
             gen_data=self.gen_data,
             cap_data=self.cap_data,
             reg_data=self.reg_data,
         )
+        if objective_function is not None:
+            self.objective_function = objective_function
         # Solve
-        result = auto_solve(
-            self.model,
-            self.objective_function,
-            target=self.target,
-            error_percent=self.error_percent,
-        )
+        result = auto_solve(self.model, self.objective_function, **kwargs)
+        if raw_result:
+            return result
 
         self.voltages_df = self.model.get_voltages(result.x)
         self.power_flows_df = self.model.get_apparent_power_flows(result.x)
-        self.decision_variables_df = self.model.get_decision_variables(result.x)
+        self.p_gens = self.model.get_p_gens(result.x)
+        self.q_gens = self.model.get_q_gens(result.x)
+
+        if self.save_inputs:
+            self.save_input_data()
+        if self.save_results:
+            self.save_result_data()
+        if self.save_plots or self.show_plots:
+            self.make_plots()
+        return self.voltages_df, self.power_flows_df, self.p_gens, self.q_gens
+
+    def save_result_data(self):
+        if not self.output_dir.exists():
+            self.output_dir.mkdir()
+        self.voltages_df.to_csv(
+            Path(self.output_dir) / "node_voltages.csv", index=False
+        )
+        self.power_flows_df.to_csv(
+            Path(self.output_dir) / "power_flows.csv", index=False
+        )
+        self.p_gens.to_csv(Path(self.output_dir) / "p_gens.csv", index=False)
+        self.q_gens.to_csv(Path(self.output_dir) / "q_gens.csv", index=False)
+
+    def save_input_data(self):
+        config_parameters = {
+            "model_type": type(self.model),
+            "objective_function": str(self.objective_function),
+            "control_variable": self.control_variable,
+        }
+        if not self.output_dir.exists():
+            self.output_dir.mkdir()
+        case_data_dir = Path(self.output_dir) / "case_data"
+        if not case_data_dir.exists():
+            case_data_dir.mkdir()
+        with open(Path(self.output_dir) / "case_data" / "config.json", "w") as f:
+            json.dump(config_parameters, f, ensure_ascii=False, indent=4)
+        self.branch_data.to_csv(
+            Path(self.output_dir) / "case_data" / "branch_data.csv", index=False
+        )
+        self.bus_data.to_csv(
+            Path(self.output_dir) / "case_data" / "bus_data.csv", index=False
+        )
+        if self.gen_data is not None:
+            self.gen_data.to_csv(
+                Path(self.output_dir) / "case_data" / "gen_data.csv", index=False
+            )
+        if self.cap_data is not None:
+            self.cap_data.to_csv(
+                Path(self.output_dir) / "case_data" / "cap_data.csv", index=False
+            )
+        if self.reg_data is not None:
+            self.reg_data.to_csv(
+                Path(self.output_dir) / "case_data" / "reg_data.csv", index=False
+            )
+
+    def make_plots(self):
         fig1 = plot_network(
             self.model, self.voltages_df, self.power_flows_df, show_reactive_power=False
         )
         fig2 = plot_power_flows(self.power_flows_df)
         fig3 = plot_voltages(self.voltages_df)
-        fig4 = plot_ders(self.decision_variables_df)
-
-        if self.save_inputs:
-            config_parameters = {
-                "objective_function": str(self.objective_function),
-                "control_variable": self.control_variable,
-            }
-            if not self.output_dir.exists():
-                self.output_dir.mkdir()
-            case_data_dir = Path(self.output_dir) / "case_data"
-            if not case_data_dir.exists():
-                case_data_dir.mkdir()
-            with open(Path(self.output_dir) / "case_data" / "config.json", "w") as f:
-                json.dump(config_parameters, f, ensure_ascii=False, indent=4)
-            self.branch_data.to_csv(
-                Path(self.output_dir) / "case_data" / "branch_data.csv", index=False
-            )
-            self.bus_data.to_csv(
-                Path(self.output_dir) / "case_data" / "bus_data.csv", index=False
-            )
-            if self.gen_data is not None:
-                self.gen_data.to_csv(
-                    Path(self.output_dir) / "case_data" / "gen_data.csv", index=False
-                )
-            if self.cap_data is not None:
-                self.cap_data.to_csv(
-                    Path(self.output_dir) / "case_data" / "cap_data.csv", index=False
-                )
-            if self.reg_data is not None:
-                self.reg_data.to_csv(
-                    Path(self.output_dir) / "case_data" / "reg_data.csv", index=False
-                )
-        if self.save_results:
-            if not self.output_dir.exists():
-                self.output_dir.mkdir()
-            self.voltages_df.to_csv(
-                Path(self.output_dir) / "node_voltages.csv", index=False
-            )
-            self.power_flows_df.to_csv(
-                Path(self.output_dir) / "power_flows.csv", index=False
-            )
-            self.decision_variables_df.to_csv(
-                Path(self.output_dir) / "decision_variables.csv", index=False
-            )
+        fig4 = plot_gens(self.p_gens, self.q_gens)
+        fig1.show()
+        fig2.show()
+        fig3.show()
+        fig4.show()
         if self.save_plots:
             fig1.write_html(self.output_dir / "network_plot.html")
             fig2.write_html(self.output_dir / "power_flow_plot.html")
             fig3.write_html(self.output_dir / "voltage_plot.html")
-            fig4.write_html(self.output_dir / "decision_variable_plot.html")
-        if self.show_plots:
-            fig1.show(renderer="browser")
-            fig2.show(renderer="browser")
-            fig3.show(renderer="browser")
-            fig4.show(renderer="browser")
-        return self.voltages_df, self.power_flows_df, self.decision_variables_df
+            fig4.write_html(self.output_dir / "gens.html")
 
     def plot_network(
         self,
@@ -532,8 +562,8 @@ class DistOPFCase(object):
             self.model,
             v=self.voltages_df,
             s=self.power_flows_df,
-            control_values=self.decision_variables_df,
-            control_variable=self.control_variable,
+            p_gen=self.p_gens,
+            q_gen=self.q_gens,
             v_min=v_min,
             v_max=v_max,
             show_phases=show_phases,
@@ -565,7 +595,7 @@ class DistOPFCase(object):
         -------
         fig: plotly.graph_objects.Figure
         """
-        return plot_ders(self.decision_variables_df)
+        return plot_gens(self.p_gens, self.q_gens)
 
     # def delete_generator(self, node_name: str) -> None:
     #     gen = self.gen_data.copy()
@@ -621,7 +651,7 @@ class DistOPFCase(object):
 
     def add_capacitor(
         self,
-        name: str,
+        name: any,
         phases: str = None,
         q=0,
     ):
@@ -633,6 +663,7 @@ class DistOPFCase(object):
         _id = _ids[0]
         if _id in cap.loc[:, "id"].to_numpy():
             i = self.cap_data.loc[self.cap_data.id == _id, "id"].index[0]
+        print(cap.name.dtype)
         cap.at[i, "name"] = name
         cap.at[i, "id"] = _id
         bus_phases = self.bus_data.loc[self.bus_data.name == "13", "phases"].to_numpy()[

@@ -1,0 +1,1 @@
+The multiperiod module is functional but not considered stable. Future updates may have breaking changes.
