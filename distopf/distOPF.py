@@ -8,10 +8,11 @@ import json
 import pandas as pd
 import numpy as np
 
-from distopf import DSSParser, CASES_DIR, LinDistModel, LinDistModelCapMI, LinDistModelCapacitorRegulatorMI
-from distopf.lindist_p_fast import LinDistModelPFast
-from distopf.lindist_q_fast import LinDistModelQFast
-from distopf.lindist_fast import LinDistModelFast
+from distopf.base import LinDistBase
+from distopf import DSSParser, CASES_DIR, LinDistModelL, LinDistModelCapMI, LinDistModelCapacitorRegulatorMI
+from distopf.lindist_p_gen import LinDistModelPGen
+from distopf.lindist_q_gen import LinDistModelQGen
+from distopf.lindist import LinDistModel
 from distopf.lindist_capacitor_mi import LinDistModelCapMI
 from distopf.lindist_capacitor_regulator_mi import LinDistModelCapacitorRegulatorMI
 from distopf.opf_solver import (
@@ -28,20 +29,19 @@ from distopf.opf_solver import (
     lp_solve,
 )
 from distopf.plot import plot_network, plot_voltages, plot_power_flows, plot_gens
-from distopf.lindist_base import (
-    _handle_branch_input,
-    _handle_bus_input,
-    _handle_gen_input,
-    _handle_cap_input,
-    _handle_reg_input,
+from distopf.utils import (
+    handle_branch_input,
+    handle_bus_input,
+    handle_gen_input,
+    handle_cap_input,
+    handle_reg_input,
 )
-
 
 def create_model(
         control_variable: str = "",
         control_regulators: bool = False,
         control_capacitors: bool = False,
-        **kwargs) -> LinDistModelCapMI | LinDistModelCapacitorRegulatorMI | LinDistModel | LinDistModelPFast | LinDistModelQFast | LinDistModelFast:
+        **kwargs) -> LinDistBase:
     """
     Create the correct LinDistModel object based on the control variable.
     Parameters
@@ -70,25 +70,25 @@ def create_model(
     if control_regulators:
         return LinDistModelCapacitorRegulatorMI(**kwargs)
     if control_variable is None or control_variable == "":
-        return LinDistModelFast(**kwargs)
+        return LinDistModel(**kwargs)
     if control_variable.upper() == "P":
-        return LinDistModelPFast(**kwargs)
+        return LinDistModelPGen(**kwargs)
     if control_variable.upper() == "Q":
-        return LinDistModelQFast(**kwargs)
+        return LinDistModelQGen(**kwargs)
     if control_variable.upper() == "PQ":
-        return LinDistModelFast(**kwargs)
+        return LinDistModel(**kwargs)
     raise ValueError(
         f"Unknown control variable '{control_variable}'. Valid options are 'P', 'Q' or None"
     )
 
 
-def auto_solve(model, objective_function=None, **kwargs):
+def auto_solve(model: LinDistBase, objective_function=None, **kwargs):
     """
     Solve with selected objective function and model. Automatically chooses the appropriate function.
 
     Parameters
     ----------
-    model : LinDistModel
+    model : LinDistBase
     objective_function : str or Callable
     kwargs : kwargs to pass to objective function and solver function.
         solver: str
@@ -183,11 +183,11 @@ def _get_data_from_path(data_path: Path) -> dict:
         cap_data = dss_parser.cap_data
         reg_data = dss_parser.reg_data
 
-    branch_data = _handle_branch_input(branch_data)
-    bus_data = _handle_bus_input(bus_data)
-    gen_data = _handle_gen_input(gen_data)
-    cap_data = _handle_cap_input(cap_data)
-    reg_data = _handle_reg_input(reg_data)
+    branch_data = handle_branch_input(branch_data)
+    bus_data = handle_bus_input(bus_data)
+    gen_data = handle_gen_input(gen_data)
+    cap_data = handle_cap_input(cap_data)
+    reg_data = handle_reg_input(reg_data)
     return {
         "branch_data": branch_data,
         "bus_data": bus_data,
@@ -322,15 +322,15 @@ class DistOPFCase(object):
             self.cap_data = case_data["cap_data"]
             self.reg_data = case_data["reg_data"]
         if kwargs.get("branch_data") is not None:
-            self.branch_data = _handle_branch_input(kwargs.get("branch_data"))
+            self.branch_data = handle_branch_input(kwargs.get("branch_data"))
         if kwargs.get("bus_data") is not None:
-            self.bus_data = _handle_bus_input(kwargs.get("bus_data"))
+            self.bus_data = handle_bus_input(kwargs.get("bus_data"))
         if kwargs.get("gen_data") is not None:
-            self.gen_data = _handle_gen_input(kwargs.get("gen_data"))
+            self.gen_data = handle_gen_input(kwargs.get("gen_data"))
         if kwargs.get("cap_data") is not None:
-            self.cap_data = _handle_cap_input(kwargs.get("cap_data"))
+            self.cap_data = handle_cap_input(kwargs.get("cap_data"))
         if kwargs.get("reg_data") is not None:
-            self.reg_data = _handle_reg_input(kwargs.get("reg_data"))
+            self.reg_data = handle_reg_input(kwargs.get("reg_data"))
         if self.branch_data is None or self.bus_data is None:
             raise ValueError(
                 "At least one of branch_data or bus_data was not found. "

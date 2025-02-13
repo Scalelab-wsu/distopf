@@ -11,7 +11,7 @@ case = opf.DistOPFCase(
     # cvr_q = 1.0,
 )
 
-model = opf.LinDistModel(
+model = opf.LinDistModelL(
     branch_data=case.branch_data,
     bus_data=case.bus_data,
     gen_data=case.gen_data,

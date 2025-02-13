@@ -31,7 +31,7 @@ class TestDSS(unittest.TestCase):
                 dss_parser.dss.Solution.LoadMult(mult)
                 dss_parser.dss.Solution.Solve()
                 dss_parser.update()
-                model = opf.LinDistModel(
+                model = opf.LinDistModelL(
                     dss_parser.branch_data,
                     dss_parser.bus_data,
                     cap_data=dss_parser.cap_data,

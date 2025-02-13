@@ -8,7 +8,7 @@ from distopf import plot_network, compare_flows, compare_voltages
 from distopf import opf_solver
 from distopf.multiperiod import LinDistModelMulti
 from distopf.multiperiod import LinDistModelMultiFast
-from distopf import LinDistModel
+from distopf import LinDistModelL
 import distopf as opf
 from distopf import CASES_DIR
 
@@ -85,7 +85,7 @@ class TestMulti(unittest.TestCase):
             bus_data.ql_b *= load_mult
             bus_data.ql_c *= load_mult
 
-            m2 = LinDistModel(
+            m2 = LinDistModelL(
                 branch_data=branch_data,
                 bus_data=bus_data,
                 gen_data=gen_data,
@@ -208,7 +208,7 @@ class TestMulti(unittest.TestCase):
                 start_step=start_time,
                 n_steps=1,
             )
-            m2 = LinDistModel(
+            m2 = LinDistModelL(
                 branch_data=branch_data,
                 bus_data=bus_data2,
                 gen_data=gen_data2,

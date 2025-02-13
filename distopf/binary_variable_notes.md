@@ -1,4 +1,4 @@
-"""
+
 q = u*q_nom*v
 q_v = q_nom*v
 q_v_max = q_nom*v_max
@@ -21,4 +21,4 @@ A_ub*x <= b_ub
 1*z_c - 1*v <=0
 -1*z_c + 1*v + v_max*u <= v_max
 -1*z_c <= 0
-"""
+

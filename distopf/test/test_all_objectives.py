@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 
 from distopf import opf_solver
-from distopf.lindist_p_fast import LinDistModelPFast
-from distopf.lindist_q_fast import LinDistModelQFast
+from distopf.lindist_p_gen import LinDistModelPGen
+from distopf.lindist_q_gen import LinDistModelQGen
 from distopf.test.legacy.opf_var import QModel
 from distopf.test.legacy.opf_watt import PModel
 from distopf import compare_voltages, compare_flows
@@ -74,7 +74,7 @@ class TestObjectives(unittest.TestCase):
         gen_data.loc[:, ["pa", "pb", "pc"]] *= 3
         gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= 3
 
-        model_new = LinDistModelQFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelQGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         powerdata = pd.read_csv(legacy_powerdata_path, header=0)
         model_old = QModel(
             branch_data,
@@ -84,10 +84,12 @@ class TestObjectives(unittest.TestCase):
             p_base_gld=1e6,
             v_ll_base_gld=4160,
         )
-        print("Solve old")
+        # print("Solve old")
         res_old = model_old.solve(objective="loss", gld_correction=False)
-        print("Solve new")
+        print(f"old: {res_old.fun}")
+        # print("Solve new")
         res_new = opf_solver.cvxpy_solve(model_new, opf_solver.cp_obj_loss)
+        print(f"new: {res_new.fun}")
         assert_results_equal(model_new, model_old, res_new, res_old)
 
     def test_cp_obj_target_q_3ph(self):
@@ -102,7 +104,7 @@ class TestObjectives(unittest.TestCase):
         gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= p_rating_mult
 
         bus_data.loc[bus_data.bus_type == "SWING", ["v_a", "v_b", "v_c"]] = 1.0
-        model_new = LinDistModelQFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelQGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         powerdata = pd.read_csv(legacy_powerdata_path, header=0)
         model_old = QModel(
             branch_data,
@@ -138,7 +140,7 @@ class TestObjectives(unittest.TestCase):
         gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= p_rating_mult
 
         bus_data.loc[bus_data.bus_type == "SWING", ["v_a", "v_b", "v_c"]] = 1.0
-        model_new = LinDistModelQFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelQGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         powerdata = pd.read_csv(legacy_powerdata_path, header=0)
         model_old = QModel(
             branch_data,
@@ -174,7 +176,7 @@ class TestObjectives(unittest.TestCase):
         bus_data.loc[:, ["pl_a", "pl_b", "pl_c"]] *= 0.5
         bus_data.loc[:, ["ql_a", "ql_b", "ql_c"]] *= 0.5
 
-        model_new = LinDistModelPFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         powerdata = pd.read_csv(legacy_powerdata_path)
         model_old = PModel(
             branch_data,
@@ -214,7 +216,7 @@ class TestObjectives(unittest.TestCase):
         gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= p_rating_mult
         bus_data.loc[:, ["pl_a", "pl_b", "pl_c"]] *= load_mult
         bus_data.loc[:, ["ql_a", "ql_b", "ql_c"]] *= load_mult
-        model_new = LinDistModelPFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         powerdata = pd.read_csv(legacy_powerdata_path)
         model_old = PModel(
             branch_data,
@@ -250,7 +252,7 @@ class TestObjectives(unittest.TestCase):
         gen_data.control_variable = "P"
         bus_data.loc[:, ["pl_a", "pl_b", "pl_c"]] *= 0.1
         bus_data.loc[:, ["ql_a", "ql_b", "ql_c"]] *= 0.1
-        model_new = LinDistModelPFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         powerdata = pd.read_csv(legacy_powerdata_path)
         model_old = PModel(
             branch_data,
@@ -278,7 +280,7 @@ class TestObjectives(unittest.TestCase):
         gen_data.control_variable = "P"
         bus_data.loc[:, ["pl_a", "pl_b", "pl_c"]] *= 0.1
         bus_data.loc[:, ["ql_a", "ql_b", "ql_c"]] *= 0.1
-        model_new = LinDistModelPFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         powerdata = pd.read_csv(legacy_powerdata_path)
         model_old = PModel(
             branch_data,

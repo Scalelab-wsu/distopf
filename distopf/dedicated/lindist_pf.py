@@ -126,7 +126,7 @@ def _handle_bus_input(bus_data: pd.DataFrame) -> pd.DataFrame:
     return bus
 
 
-class LinDistModel:
+class LinDistModelPF:
     """
     LinDistFlow Model base class.
 
@@ -154,8 +154,8 @@ class LinDistModel:
         reg_data: pd.DataFrame = None,
     ):
 
-        DeprecationWarning("The version of LinDistModel in lindist_base.py is deprecated. "
-                           "Use LinDistModel from lindist.py instead.")
+        DeprecationWarning("The version of LinDistModel in lindist_pf.py is deprecated. "
+                           "Use LinDistModel from lindist_loads.py instead.")
         # ~~~~~~~~~~~~~~~~~~~~ Load Data Frames ~~~~~~~~~~~~~~~~~~~~
         self.branch = _handle_branch_input(branch_data)
         self.bus = _handle_bus_input(bus_data)

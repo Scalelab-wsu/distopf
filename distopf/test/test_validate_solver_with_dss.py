@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 
 from distopf import opf_solver, DSSParser
-from distopf.lindist_p_fast import LinDistModelPFast
-from distopf.lindist_q_fast import LinDistModelQFast
+from distopf.lindist_p_gen import LinDistModelPGen
+from distopf.lindist_q_gen import LinDistModelQGen
 import distopf as opf
 
 branchdata_path = Path("branch_data.csv")
@@ -220,7 +220,7 @@ class TestDssValidation(unittest.TestCase):
         cap_data = dss_parser.get_cap_data()
         reg_data = dss_parser.get_reg_data()
 
-        model = LinDistModelQFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model = LinDistModelQGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         res = opf_solver.cvxpy_solve(model, opf_solver.cp_obj_loss)
         p_gen = model.get_p_gens(res.x)
         q_gen = model.get_q_gens(res.x)
@@ -253,7 +253,7 @@ class TestDssValidation(unittest.TestCase):
         cap_data = dss_parser.get_cap_data()
         reg_data = dss_parser.get_reg_data()
 
-        model = LinDistModelQFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model = LinDistModelQGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         target = np.array([target_per_phase, target_per_phase, target_per_phase])
         res = opf_solver.cvxpy_solve(
             model,
@@ -292,7 +292,7 @@ class TestDssValidation(unittest.TestCase):
         cap_data = dss_parser.get_cap_data()
         reg_data = dss_parser.get_reg_data()
 
-        model = LinDistModelQFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model = LinDistModelQGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         target = target_per_phase * 3
         res = opf_solver.cvxpy_solve(
             model,
@@ -331,7 +331,7 @@ class TestDssValidation(unittest.TestCase):
         cap_data = dss_parser.get_cap_data()
         reg_data = dss_parser.get_reg_data()
 
-        model = LinDistModelPFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         res = opf_solver.cvxpy_solve(
             model,
             opf_solver.cp_obj_target_p_3ph,
@@ -369,7 +369,7 @@ class TestDssValidation(unittest.TestCase):
         branch_data = dss_parser.get_branch_data()
         cap_data = dss_parser.get_cap_data()
         reg_data = dss_parser.get_reg_data()
-        model = LinDistModelPFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         res = opf_solver.cvxpy_solve(
             model,
             opf_solver.cp_obj_target_p_total,
@@ -403,7 +403,7 @@ class TestDssValidation(unittest.TestCase):
         cap_data = dss_parser.get_cap_data()
         reg_data = dss_parser.get_reg_data()
         # add_generators_from_gen_data(dss_parser, gen_data)
-        model = LinDistModelPFast(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
         res = opf_solver.cvxpy_solve(model, opf_solver.cp_obj_curtail_lp)
         p_gen = model.get_p_gens(res.x)
         q_gen = model.get_q_gens(res.x)
