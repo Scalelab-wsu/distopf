@@ -10,7 +10,6 @@ import plotly.graph_objects as go
 from distopf.base import LinDistBase
 
 
-
 def plot_voltages(v: pd.DataFrame = None) -> go.Figure:
     """
     Parameters
@@ -65,7 +64,10 @@ def compare_voltages(v1: pd.DataFrame, v2: pd.DataFrame) -> go.Figure:
     )
     v = pd.merge(v1, v2, on=["id", "name", "phase"])
     v = v.melt(
-        ignore_index=True, var_name="value", id_vars=["id", "name", "phase"], value_name="v"
+        ignore_index=True,
+        var_name="value",
+        id_vars=["id", "name", "phase"],
+        value_name="v",
     )
     # v1["v1"] = v1["v1"].astype(float)
     # v2["v2"] = v2["v2"].astype(float)
@@ -185,9 +187,7 @@ def plot_gens(p_gens: pd.DataFrame, q_gens: pd.DataFrame) -> go.Figure:
         var_name="phase",
         value_name="Q",
     )
-    gens = pd.merge(
-        p_gens, q_gens, how="outer", on=["id", "name", "phase"]
-    )
+    gens = pd.merge(p_gens, q_gens, how="outer", on=["id", "name", "phase"])
     gens.id = p_gens.id
     gens.name = p_gens.name
     gens.phase = p_gens.phase
@@ -236,7 +236,6 @@ def compare_flows(s1: pd.DataFrame, s2: pd.DataFrame) -> go.Figure:
         s2["from_name"] = s2.fb
     if "to_name" not in s2.columns:
         s2["to_name"] = s2.tb
-
 
     s1 = s1.melt(
         ignore_index=True,

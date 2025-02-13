@@ -39,7 +39,6 @@ class LinDistModelQGen(LinDistBase):
         super().__init__(branch_data, bus_data, gen_data, cap_data, reg_data)
         self.build()
 
-
     def initialize_variable_index_pointers(self):
         self.x_maps, self.n_x = self._variable_tables(self.branch)
         self.v_map, self.n_x = self._add_device_variables(self.n_x, self.all_buses)
@@ -54,8 +53,8 @@ class LinDistModelQGen(LinDistBase):
             p_out = self.gen[f"p{a}"]
             q_max = ((s_rated**2) - (p_out**2)) ** (1 / 2)
             q_min = -q_max
-            q_max_manual = self.gen.get(f"q{a}_max", np.ones_like(q_min)*100e3)
-            q_min_manual = self.gen.get(f"q{a}_min", np.ones_like(q_min)*-100e3)
+            q_max_manual = self.gen.get(f"q{a}_max", np.ones_like(q_min) * 100e3)
+            q_min_manual = self.gen.get(f"q{a}_min", np.ones_like(q_min) * -100e3)
             for j in self.gen_buses[a]:
                 qg = self.idx("qg", j, a)
                 # reactive power bounds
@@ -161,4 +160,3 @@ class LinDistModelQGen(LinDistBase):
                 x[self.x_maps[ph].pij] + 1j * x[self.x_maps[ph].qij]
             )
         return s_df
-

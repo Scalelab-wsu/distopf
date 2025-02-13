@@ -232,12 +232,21 @@ class DSSParser:
         power_df.tb = power_df.tb.astype(int)
         power_df = (
             power_df.groupby(by=["fb", "tb"], as_index=False)
-            .agg({"fb": "first", "tb": "first", "from_name": "first", "to_name": "first", "a": "sum", "b": "sum", "c": "sum"})
+            .agg(
+                {
+                    "fb": "first",
+                    "tb": "first",
+                    "from_name": "first",
+                    "to_name": "first",
+                    "a": "sum",
+                    "b": "sum",
+                    "c": "sum",
+                }
+            )
             .reset_index(drop=True)
             .sort_values(by=["fb"], ignore_index=True)
             .sort_values(by=["tb"], ignore_index=True)
         )
-
 
         return power_df
 

@@ -2,6 +2,7 @@ import pandas as pd
 from distopf.base import LinDistBase
 import distopf as opf
 
+
 class LinDistModel(LinDistBase):
     """
     LinDistFlow Model class for linear power flow modeling.
@@ -74,7 +75,7 @@ class LinDistModel(LinDistBase):
         self.build()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # Prepare the case data
     case = opf.DistOPFCase(data_path="ieee123_30der")

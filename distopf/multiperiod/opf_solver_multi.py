@@ -30,7 +30,10 @@ def gradient_curtail(model):
         c[i] = -1
     return c
 
-def gradient_battery_efficiency(model: LinDistModelMulti, xk: cp.Variable, **kwargs) -> cp.Expression:
+
+def gradient_battery_efficiency(
+    model: LinDistModelMulti, xk: cp.Variable, **kwargs
+) -> cp.Expression:
     """
 
     Parameters
@@ -54,14 +57,19 @@ def gradient_battery_efficiency(model: LinDistModelMulti, xk: cp.Variable, **kwa
         for a in "abc":
             if not model.phase_exists(a):
                 continue
-            charging_efficiency = model.bat.loc[model.charge_map[t][a].index, f"nc_{a}"].to_numpy()
-            discharging_efficiency = model.bat.loc[model.discharge_map[t][a].index, f"nd_{a}"].to_numpy()
-            c[model.charge_map[t][a].to_numpy()] = (1 - charging_efficiency)
-            c[model.discharge_map[t][a].to_numpy()] = ((1 / discharging_efficiency) - 1)
+            charging_efficiency = model.bat.loc[
+                model.charge_map[t][a].index, f"nc_{a}"
+            ].to_numpy()
+            discharging_efficiency = model.bat.loc[
+                model.discharge_map[t][a].index, f"nd_{a}"
+            ].to_numpy()
+            c[model.charge_map[t][a].to_numpy()] = 1 - charging_efficiency
+            c[model.discharge_map[t][a].to_numpy()] = (1 / discharging_efficiency) - 1
     return c
 
 
 # ~~~ Quadratic objective with linear constraints for use with solve_quad()~~~
+
 
 def cp_obj_loss(model: LinDistModelMulti, xk: cp.Variable, **kwargs) -> cp.Expression:
     """
@@ -92,17 +100,23 @@ def cp_obj_loss(model: LinDistModelMulti, xk: cp.Variable, **kwargs) -> cp.Expre
             j = model.x_maps[t][a].bj
             r_list = np.append(r_list, np.array(model.r[a + a][i, j]).flatten())
             r_list = np.append(r_list, np.array(model.r[a + a][i, j]).flatten())
-            index_list = np.append(index_list, model.x_maps[t][a].pij.to_numpy().flatten())
-            index_list = np.append(index_list, model.x_maps[t][a].qij.to_numpy().flatten())
+            index_list = np.append(
+                index_list, model.x_maps[t][a].pij.to_numpy().flatten()
+            )
+            index_list = np.append(
+                index_list, model.x_maps[t][a].qij.to_numpy().flatten()
+            )
     r = np.array(r_list)
     ix = np.array(index_list).astype(int)
     if isinstance(xk, cp.Variable):
-        return cp.vdot(r, xk[ix]**2)
+        return cp.vdot(r, xk[ix] ** 2)
     else:
-        return np.vdot(r, xk[ix]**2)
+        return np.vdot(r, xk[ix] ** 2)
 
 
-def cp_battery_efficiency(model: LinDistModelMulti, xk: cp.Variable, **kwargs) -> cp.Expression:
+def cp_battery_efficiency(
+    model: LinDistModelMulti, xk: cp.Variable, **kwargs
+) -> cp.Expression:
     """
 
     Parameters
@@ -127,8 +141,12 @@ def cp_battery_efficiency(model: LinDistModelMulti, xk: cp.Variable, **kwargs) -
         for a in "abc":
             if not model.phase_exists(a):
                 continue
-            charging_efficiency = model.bat.loc[model.charge_map[t][a].index, f"nc_{a}"].to_numpy()
-            discharging_efficiency = model.bat.loc[model.discharge_map[t][a].index, f"nd_{a}"].to_numpy()
+            charging_efficiency = model.bat.loc[
+                model.charge_map[t][a].index, f"nc_{a}"
+            ].to_numpy()
+            discharging_efficiency = model.bat.loc[
+                model.discharge_map[t][a].index, f"nd_{a}"
+            ].to_numpy()
             vec1_list.extend((1 - charging_efficiency))
             vec1_list.extend(((1 / discharging_efficiency) - 1))
             index_list.extend(model.charge_map[t][a].to_numpy())
@@ -140,7 +158,10 @@ def cp_battery_efficiency(model: LinDistModelMulti, xk: cp.Variable, **kwargs) -
     else:
         return 1e-3 * np.vdot(vec1, xk[ix])
 
-def cp_obj_loss_batt(model: LinDistModelMulti, xk: cp.Variable, **kwargs) -> cp.Expression:
+
+def cp_obj_loss_batt(
+    model: LinDistModelMulti, xk: cp.Variable, **kwargs
+) -> cp.Expression:
     """
 
     Parameters
@@ -157,7 +178,10 @@ def cp_obj_loss_batt(model: LinDistModelMulti, xk: cp.Variable, **kwargs) -> cp.
     """
     return cp_obj_loss(model, xk) + cp_battery_efficiency(model, xk)
 
-def cp_obj_loss_deprecated(model: LinDistModel, xk: cp.Variable, **kwargs) -> cp.Expression:
+
+def cp_obj_loss_deprecated(
+    model: LinDistModel, xk: cp.Variable, **kwargs
+) -> cp.Expression:
     """
 
     Parameters
@@ -216,6 +240,7 @@ def charge_batteries(model, xk, **kwargs) -> cp.Expression:
                 continue
             f_list.append(-cp.sum(xk[model.soc_map[t][a].to_numpy()]))
     return cp.sum(f_list)
+
 
 def peak_shave(model, xk):
     f: cp.Expression = 0
@@ -362,12 +387,10 @@ def cp_obj_curtail(
         for a in "abc":
             if not model.phase_exists(a):
                 continue
-            all_pg_idx = np.r_[
-                all_pg_idx,
-                model.pg_map[t][a].to_numpy()
-            ]
+            all_pg_idx = np.r_[all_pg_idx, model.pg_map[t][a].to_numpy()]
     all_pg_idx = all_pg_idx.astype(int)
     return cp.sum((model.x_max[all_pg_idx] - xk[all_pg_idx]) ** 2)
+
 
 def cp_obj_curtail_lp(
     model: LinDistModelMulti, xk: cp.Variable, **kwargs
@@ -395,10 +418,7 @@ def cp_obj_curtail_lp(
         for a in "abc":
             if not model.phase_exists(a):
                 continue
-            all_pg_idx = np.r_[
-                all_pg_idx,
-                model.pg_map[t][a].to_numpy()
-            ]
+            all_pg_idx = np.r_[all_pg_idx, model.pg_map[t][a].to_numpy()]
     all_pg_idx = all_pg_idx.astype(int)
     return cp.sum((model.x_max[all_pg_idx] - xk[all_pg_idx]))
 
@@ -476,7 +496,9 @@ def cvxpy_mi_solve(
     pass
 
 
-def lp_solve(model: LinDistModelMulti | LinDistModelMultiFast, c: np.ndarray = None) -> OptimizeResult:
+def lp_solve(
+    model: LinDistModelMulti | LinDistModelMultiFast, c: np.ndarray = None
+) -> OptimizeResult:
     """
     Solve a linear program using scipy.optimize.linprog and having the objective function:
         Min c^T x

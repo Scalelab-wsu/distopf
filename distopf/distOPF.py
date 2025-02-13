@@ -9,7 +9,13 @@ import pandas as pd
 import numpy as np
 
 from distopf.base import LinDistBase
-from distopf import DSSParser, CASES_DIR, LinDistModelL, LinDistModelCapMI, LinDistModelCapacitorRegulatorMI
+from distopf import (
+    DSSParser,
+    CASES_DIR,
+    LinDistModelL,
+    LinDistModelCapMI,
+    LinDistModelCapacitorRegulatorMI,
+)
 from distopf.lindist_p_gen import LinDistModelPGen
 from distopf.lindist_q_gen import LinDistModelQGen
 from distopf.lindist import LinDistModel
@@ -37,11 +43,13 @@ from distopf.utils import (
     handle_reg_input,
 )
 
+
 def create_model(
-        control_variable: str = "",
-        control_regulators: bool = False,
-        control_capacitors: bool = False,
-        **kwargs) -> LinDistBase:
+    control_variable: str = "",
+    control_regulators: bool = False,
+    control_capacitors: bool = False,
+    **kwargs,
+) -> LinDistBase:
     """
     Create the correct LinDistModel object based on the control variable.
     Parameters
@@ -107,7 +115,9 @@ def auto_solve(model: LinDistBase, objective_function=None, **kwargs):
     if objective_function is None:
         objective_function = np.zeros(model.n_x)
     if not isinstance(objective_function, (str, Callable, np.ndarray, list)):
-        raise TypeError("objective_function must be a function handle, array, or string")
+        raise TypeError(
+            "objective_function must be a function handle, array, or string"
+        )
     objective_function_map_gradient: [str, Callable] = {
         "gen_max": gradient_curtail,
         "load_min": gradient_load_min,
@@ -420,12 +430,12 @@ class DistOPFCase(object):
         return self.voltages_df, self.power_flows_df
 
     def run(
-            self,
-            objective_function=None,
-            control_regulators=False,
-            control_capacitors=False,
-            raw_result=False,
-            **kwargs
+        self,
+        objective_function=None,
+        control_regulators=False,
+        control_capacitors=False,
+        raw_result=False,
+        **kwargs,
     ):
         """
         Run the optimization, save and plot the results.
@@ -450,11 +460,7 @@ class DistOPFCase(object):
         if objective_function is not None:
             self.objective_function = objective_function
         # Solve
-        result = auto_solve(
-            self.model,
-            self.objective_function,
-            **kwargs
-        )
+        result = auto_solve(self.model, self.objective_function, **kwargs)
         if raw_result:
             return result
 
@@ -480,12 +486,8 @@ class DistOPFCase(object):
         self.power_flows_df.to_csv(
             Path(self.output_dir) / "power_flows.csv", index=False
         )
-        self.p_gens.to_csv(
-            Path(self.output_dir) / "p_gens.csv", index=False
-        )
-        self.q_gens.to_csv(
-            Path(self.output_dir) / "q_gens.csv", index=False
-        )
+        self.p_gens.to_csv(Path(self.output_dir) / "p_gens.csv", index=False)
+        self.q_gens.to_csv(Path(self.output_dir) / "q_gens.csv", index=False)
 
     def save_input_data(self):
         config_parameters = {

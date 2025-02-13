@@ -39,7 +39,6 @@ class LinDistModelPGen(LinDistBase):
         super().__init__(branch_data, bus_data, gen_data, cap_data, reg_data)
         self.build()
 
-
     def initialize_variable_index_pointers(self):
         self.x_maps, self.n_x = self._variable_tables(self.branch)
         self.v_map, self.n_x = self._add_device_variables(self.n_x, self.all_buses)

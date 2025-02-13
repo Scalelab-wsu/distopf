@@ -10,12 +10,12 @@ import distopf as opf
 
 class LinDistModelCapacitorRegulatorMI(opf.LinDistModelCapMI):
     def __init__(
-            self,
-            branch_data: pd.DataFrame = None,
-            bus_data: pd.DataFrame = None,
-            gen_data: pd.DataFrame = None,
-            cap_data: pd.DataFrame = None,
-            reg_data: pd.DataFrame = None,
+        self,
+        branch_data: pd.DataFrame = None,
+        bus_data: pd.DataFrame = None,
+        gen_data: pd.DataFrame = None,
+        cap_data: pd.DataFrame = None,
+        reg_data: pd.DataFrame = None,
     ):
         super().__init__(
             branch_data=branch_data,
@@ -36,9 +36,9 @@ class LinDistModelCapacitorRegulatorMI(opf.LinDistModelCapMI):
     def cvxpy_regulator_mi_constraints(self):
 
         n_u_reg = (
-                len(self.reg_buses["a"])
-                + len(self.reg_buses["b"])
-                + len(self.reg_buses["c"])
+            len(self.reg_buses["a"])
+            + len(self.reg_buses["b"])
+            + len(self.reg_buses["c"])
         )
         default_tap = np.zeros((max(n_u_reg, 1), 33))
         default_tap[:, 16] = 1

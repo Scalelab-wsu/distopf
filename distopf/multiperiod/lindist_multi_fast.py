@@ -337,7 +337,7 @@ class LinDistModelMultiFast:
             q_min_manual = self.gen[f"q{a}_min"]
             s_rated = self.gen[f"s{a}_max"]
             p_out = self.gen[f"p{a}"]
-            q_max = ((s_rated**2) - ((p_out*gen_mult)**2)) ** (1 / 2)
+            q_max = ((s_rated**2) - ((p_out * gen_mult) ** 2)) ** (1 / 2)
             q_min = -q_max
             for j in self.gen_buses[a]:
                 mode = self.gen.loc[j, f"control_variable"]
@@ -363,7 +363,9 @@ class LinDistModelMultiFast:
             if not self.phase_exists(a):
                 continue
             x_lim_lower[self.discharge_map[t][a]] = 0
-            x_lim_upper[self.discharge_map[t][a]] = self.bat.loc[self.discharge_map[t][a].index, f"Pb_max_{a}"]
+            x_lim_upper[self.discharge_map[t][a]] = self.bat.loc[
+                self.discharge_map[t][a].index, f"Pb_max_{a}"
+            ]
         return x_lim_lower, x_lim_upper
 
     def add_battery_charging_limits(self, x_lim_lower, x_lim_upper, t=0):
@@ -373,7 +375,9 @@ class LinDistModelMultiFast:
             if not self.phase_exists(a):
                 continue
             x_lim_lower[self.charge_map[t][a]] = 0
-            x_lim_upper[self.charge_map[t][a]] = self.bat.loc[self.charge_map[t][a].index, f"Pb_max_{a}"]
+            x_lim_upper[self.charge_map[t][a]] = self.bat.loc[
+                self.charge_map[t][a].index, f"Pb_max_{a}"
+            ]
         return x_lim_lower, x_lim_upper
 
     def add_battery_soc_limits(self, x_lim_lower, x_lim_upper, t=0):
@@ -382,8 +386,12 @@ class LinDistModelMultiFast:
         for a in "abc":
             if not self.phase_exists(a):
                 continue
-            x_lim_upper[self.soc_map[t][a]] = self.bat.loc[self.soc_map[t][a].index, f"bmax_{a}"]
-            x_lim_lower[self.soc_map[t][a]] = self.bat.loc[self.soc_map[t][a].index, f"bmin_{a}"]
+            x_lim_upper[self.soc_map[t][a]] = self.bat.loc[
+                self.soc_map[t][a].index, f"bmax_{a}"
+            ]
+            x_lim_lower[self.soc_map[t][a]] = self.bat.loc[
+                self.soc_map[t][a].index, f"bmin_{a}"
+            ]
         return x_lim_lower, x_lim_upper
 
     @cache
@@ -552,7 +560,9 @@ class LinDistModelMultiFast:
     def add_regulator_model(self, a_eq, b_eq, j, a, t=0):
         if t < self.start_step:
             t = self.start_step
-        i = self.idx("bi", j, a, t=t)[0]  # get the upstream node, i, on branch from i to j
+        i = self.idx("bi", j, a, t=t)[
+            0
+        ]  # get the upstream node, i, on branch from i to j
         vi = self.idx("v", i, a, t=t)
         vj = self.idx("v", j, a, t=t)
 
@@ -567,7 +577,9 @@ class LinDistModelMultiFast:
     def add_swing_voltage_model(self, a_eq, b_eq, j, a, t=0):
         if t < self.start_step:
             t = self.start_step
-        i = self.idx("bi", j, a, t=t)[0]  # get the upstream node, i, on branch from i to j
+        i = self.idx("bi", j, a, t=t)[
+            0
+        ]  # get the upstream node, i, on branch from i to j
         vi = self.idx("v", i, a, t=t)
         # Set V equation variable coefficients in a_eq and constants in b_eq
         if self.bus.bus_type[i] == opf.SWING_BUS:  # Swing bus
@@ -590,7 +602,7 @@ class LinDistModelMultiFast:
         # Set Generator equation variable coefficients in a_eq
         if get(self.gen["control_variable"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_P]:
             a_eq[pg, pg] = 1
-            b_eq[pg] = p_gen_nom*pv_mult
+            b_eq[pg] = p_gen_nom * pv_mult
         if get(self.gen["control_variable"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_Q]:
             a_eq[qg, qg] = 1
             b_eq[qg] = q_gen_nom
@@ -611,7 +623,7 @@ class LinDistModelMultiFast:
         # boundary p and q
         if self.bus.bus_type[j] != opf.PQ_FREE:
             # Set Load equation variable coefficients in a_eq
-            a_eq[pij, vj] =  -(self.bus.cvr_p[j] / 2) * p_load_nom
+            a_eq[pij, vj] = -(self.bus.cvr_p[j] / 2) * p_load_nom
             b_eq[pij] = (1 - (self.bus.cvr_p[j] / 2)) * p_load_nom
             a_eq[qij, vj] = -(self.bus.cvr_q[j] / 2) * q_load_nom
             b_eq[qij] = (1 - (self.bus.cvr_q[j] / 2)) * q_load_nom
@@ -680,9 +692,11 @@ class LinDistModelMultiFast:
 
         # ########## Aineq and Bineq Formation ###########
         n_inequalities = 6
-        n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
-        ) * self.n_steps
+        n_rows_ineq = (
+            n_inequalities
+            * (len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3)
+            * self.n_steps
+        )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
@@ -736,9 +750,11 @@ class LinDistModelMultiFast:
         # ########## Aineq and Bineq Formation ###########
         n_inequalities = 5
 
-        n_rows_ineq = n_inequalities * (
-                len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3
-        ) * self.n_steps
+        n_rows_ineq = (
+            n_inequalities
+            * (len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3)
+            * self.n_steps
+        )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)

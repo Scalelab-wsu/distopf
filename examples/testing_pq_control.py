@@ -26,7 +26,7 @@ if __name__ == "__main__":
         v_swing=1.0,
         v_max=1.1,
         v_min=0.95,
-        control_variable="PQ"
+        control_variable="PQ",
     )
     reg_data = pd.concat(
         [
@@ -89,4 +89,3 @@ if __name__ == "__main__":
     # qg_oct = hex.get_q_gens(result_oct.x)
     # opf.plot.plot_polar(pg_oct, qg_oct).show()
     # opf.plot.plot_polar(pg_hex, qg_hex).show()
-

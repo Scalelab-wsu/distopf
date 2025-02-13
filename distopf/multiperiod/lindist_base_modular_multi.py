@@ -351,7 +351,7 @@ class LinDistModelMulti:
             q_min_manual = self.gen[f"q{a}_min"]
             s_rated = self.gen[f"s{a}_max"]
             p_out = self.gen[f"p{a}"]
-            q_max = ((s_rated**2) - ((p_out*gen_mult)**2)) ** (1 / 2)
+            q_max = ((s_rated**2) - ((p_out * gen_mult) ** 2)) ** (1 / 2)
             q_min = -q_max
             for j in self.gen_buses[a]:
                 mode = self.gen.loc[j, f"control_variable"]
@@ -377,7 +377,9 @@ class LinDistModelMulti:
             if not self.phase_exists(a):
                 continue
             x_lim_lower[self.discharge_map[t][a]] = 0
-            x_lim_upper[self.discharge_map[t][a]] = self.bat.loc[self.discharge_map[t][a].index, f"Pb_max_{a}"]
+            x_lim_upper[self.discharge_map[t][a]] = self.bat.loc[
+                self.discharge_map[t][a].index, f"Pb_max_{a}"
+            ]
         return x_lim_lower, x_lim_upper
 
     def add_battery_charging_limits(self, x_lim_lower, x_lim_upper, t=0):
@@ -387,7 +389,9 @@ class LinDistModelMulti:
             if not self.phase_exists(a):
                 continue
             x_lim_lower[self.charge_map[t][a]] = 0
-            x_lim_upper[self.charge_map[t][a]] = self.bat.loc[self.charge_map[t][a].index, f"Pb_max_{a}"]
+            x_lim_upper[self.charge_map[t][a]] = self.bat.loc[
+                self.charge_map[t][a].index, f"Pb_max_{a}"
+            ]
         return x_lim_lower, x_lim_upper
 
     def add_battery_soc_limits(self, x_lim_lower, x_lim_upper, t=0):
@@ -396,8 +400,12 @@ class LinDistModelMulti:
         for a in "abc":
             if not self.phase_exists(a):
                 continue
-            x_lim_upper[self.soc_map[t][a]] = self.bat.loc[self.soc_map[t][a].index, f"bmax_{a}"]
-            x_lim_lower[self.soc_map[t][a]] = self.bat.loc[self.soc_map[t][a].index, f"bmin_{a}"]
+            x_lim_upper[self.soc_map[t][a]] = self.bat.loc[
+                self.soc_map[t][a].index, f"bmax_{a}"
+            ]
+            x_lim_lower[self.soc_map[t][a]] = self.bat.loc[
+                self.soc_map[t][a].index, f"bmin_{a}"
+            ]
         return x_lim_lower, x_lim_upper
 
     @cache
@@ -574,7 +582,9 @@ class LinDistModelMulti:
     def add_regulator_model(self, a_eq, b_eq, j, a, t=0):
         if t < self.start_step:
             t = self.start_step
-        i = self.idx("bi", j, a, t=t)[0]  # get the upstream node, i, on branch from i to j
+        i = self.idx("bi", j, a, t=t)[
+            0
+        ]  # get the upstream node, i, on branch from i to j
         vi = self.idx("v", i, a, t=t)
         vj = self.idx("v", j, a, t=t)
 
@@ -589,7 +599,9 @@ class LinDistModelMulti:
     def add_swing_voltage_model(self, a_eq, b_eq, j, a, t=0):
         if t < self.start_step:
             t = self.start_step
-        i = self.idx("bi", j, a, t=t)[0]  # get the upstream node, i, on branch from i to j
+        i = self.idx("bi", j, a, t=t)[
+            0
+        ]  # get the upstream node, i, on branch from i to j
         vi = self.idx("v", i, a, t=t)
         # Set V equation variable coefficients in a_eq and constants in b_eq
         if self.bus.bus_type[i] == opf.SWING_BUS:  # Swing bus
@@ -612,7 +624,7 @@ class LinDistModelMulti:
         # Set Generator equation variable coefficients in a_eq
         if get(self.gen["control_variable"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_P]:
             a_eq[pg, pg] = 1
-            b_eq[pg] = p_gen_nom*pv_mult
+            b_eq[pg] = p_gen_nom * pv_mult
         if get(self.gen["control_variable"], j, 0) in [opf.CONSTANT_PQ, opf.CONSTANT_Q]:
             a_eq[qg, qg] = 1
             b_eq[qg] = q_gen_nom
@@ -706,9 +718,11 @@ class LinDistModelMulti:
 
         # ########## Aineq and Bineq Formation ###########
         n_inequalities = 6
-        n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
-        ) * self.n_steps
+        n_rows_ineq = (
+            n_inequalities
+            * (len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3)
+            * self.n_steps
+        )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
@@ -759,13 +773,15 @@ class LinDistModelMulti:
         Use an octagon to approximate the circular inequality constraint of an inverter.
         """
         n_inequalities = 5
-        n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
-        ) * self.n_steps
+        n_rows_ineq = (
+            n_inequalities
+            * (len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3)
+            * self.n_steps
+        )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
-        ineq = list(range(n_inequalities)) # initialize equation indices
+        ineq = list(range(n_inequalities))  # initialize equation indices
         for t in range(self.start_step, self.start_step + self.n_steps):
             for j in self.gen.index:
                 for a in "abc":
@@ -776,11 +792,11 @@ class LinDistModelMulti:
                     pg = self.idx("pg", j, a, t=t)
                     qg = self.idx("qg", j, a, t=t)
                     s_rated = self.gen.at[j, f"s{a}_max"]
-                    coef = sqrt(3)/3  # ~=0.5774
+                    coef = sqrt(3) / 3  # ~=0.5774
                     # Right half plane. Positive P
                     # limit for small +P and large +Q
                     a_ineq[ineq[0], pg] = 0
-                    a_ineq[ineq[0], qg] = 2*coef
+                    a_ineq[ineq[0], qg] = 2 * coef
                     b_ineq[ineq[0]] = s_rated
                     # limit for large +P and small +Q
                     a_ineq[ineq[1], pg] = 1
@@ -792,7 +808,7 @@ class LinDistModelMulti:
                     b_ineq[ineq[2]] = s_rated
                     # limit for small +P and large -Q
                     a_ineq[ineq[3], pg] = 0
-                    a_ineq[ineq[3], qg] = -2*coef
+                    a_ineq[ineq[3], qg] = -2 * coef
                     b_ineq[ineq[3]] = s_rated
                     # limit to right half plane
                     a_ineq[ineq[4], pg] = -1
@@ -807,13 +823,15 @@ class LinDistModelMulti:
         Use an octagon to approximate the circular inequality constraint of an inverter.
         """
         n_inequalities = 5
-        n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
-        ) * self.n_steps
+        n_rows_ineq = (
+            n_inequalities
+            * (len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3)
+            * self.n_steps
+        )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
-        ineq = list(range(n_inequalities)) # initialize equation indices
+        ineq = list(range(n_inequalities))  # initialize equation indices
         for t in range(self.start_step, self.start_step + self.n_steps):
             for j in self.gen.index:
                 for a in "abc":
