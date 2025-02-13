@@ -2,6 +2,7 @@ import pandas as pd
 import distopf as opf
 from distopf.base import LinDistBase
 
+
 class LinDistModelL(LinDistBase):
     """
     LinDistFlow Model for linear power flow modeling which includes active and
@@ -134,7 +135,7 @@ class LinDistModelL(LinDistBase):
         return self.get_device_variables(x, self.ql_map)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # Prepare the case data
     case = opf.DistOPFCase(data_path="ieee123_30der")

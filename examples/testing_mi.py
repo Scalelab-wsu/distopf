@@ -10,7 +10,6 @@ import cvxpy as cp
 case = opf.DistOPFCase(
     data_path="ieee13",
     gen_mult=1,
-
     load_mult=1,
     v_swing=0.994,
     v_max=1.05,
@@ -33,7 +32,7 @@ case.cap_data = pd.concat(
         ),
     ]
 )
-case.gen_data.control_variable=""
+case.gen_data.control_variable = ""
 model = LinDistModelCapMI(
     branch_data=case.branch_data,
     bus_data=case.bus_data,
@@ -53,7 +52,9 @@ q_gens = model.get_q_gens(result.x)
 print(model.get_uc(result.x))
 print(model.get_zc(result.x))
 print(model.get_q_caps(result.x))
-opf.plot_network(model, v, s, p_gen=p_gens, q_gen=q_gens, show_reactive_power=True).show()
+opf.plot_network(
+    model, v, s, p_gen=p_gens, q_gen=q_gens, show_reactive_power=True
+).show()
 
 # opf.compare_voltages(v, new_v).show(renderer="browser")
 # opf.compare_flows(s, new_s).show(renderer="browser")

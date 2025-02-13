@@ -47,15 +47,11 @@ def gradient_curtail(model: LinDistBase, *args, **kwargs) -> np.ndarray:
 
     """
 
-
     all_pg_idx = np.array([])
     for a in "abc":
         if not model.phase_exists(a):
             continue
-        all_pg_idx = np.r_[
-            all_pg_idx,
-            model.pg_map[a].to_numpy()
-        ]
+        all_pg_idx = np.r_[all_pg_idx, model.pg_map[a].to_numpy()]
     all_pg_idx = all_pg_idx.astype(int)
     c = np.zeros(model.n_x)
     c[all_pg_idx] = -1
@@ -92,9 +88,9 @@ def cp_obj_loss(model: LinDistBase, xk: cp.Variable, **kwargs) -> cp.Expression:
     r = np.array(r_list)
     ix = np.array(index_list).astype(int)
     if isinstance(xk, cp.Variable):
-        return cp.vdot(r, xk[ix]**2)
+        return cp.vdot(r, xk[ix] ** 2)
     else:
-        return np.vdot(r, xk[ix]**2)
+        return np.vdot(r, xk[ix] ** 2)
 
 
 def cp_obj_loss_old(model: LinDistBase, xk: cp.Variable, **kwargs) -> cp.Expression:
@@ -126,9 +122,7 @@ def cp_obj_loss_old(model: LinDistBase, xk: cp.Variable, **kwargs) -> cp.Express
     return cp.sum(f_list)
 
 
-def cp_obj_target_p_3ph(
-    model: LinDistBase, xk: cp.Variable, **kwargs
-) -> cp.Expression:
+def cp_obj_target_p_3ph(model: LinDistBase, xk: cp.Variable, **kwargs) -> cp.Expression:
     """
 
     Parameters
@@ -194,9 +188,7 @@ def cp_obj_target_p_total(
     return f
 
 
-def cp_obj_target_q_3ph(
-    model: LinDistBase, xk: cp.Variable, **kwargs
-) -> cp.Expression:
+def cp_obj_target_q_3ph(model: LinDistBase, xk: cp.Variable, **kwargs) -> cp.Expression:
     """
 
     Parameters
@@ -280,9 +272,7 @@ def cp_obj_target_q_total(
 #     return f
 
 
-def cp_obj_curtail(
-    model: LinDistBase, xk: cp.Variable, **kwargs
-) -> cp.Expression:
+def cp_obj_curtail(model: LinDistBase, xk: cp.Variable, **kwargs) -> cp.Expression:
     """
     Objective function to minimize curtailment of DERs.
     Min sum((P_der_max - P_der)^2)
@@ -301,17 +291,12 @@ def cp_obj_curtail(
     for a in "abc":
         if not model.phase_exists(a):
             continue
-        all_pg_idx = np.r_[
-            all_pg_idx,
-            model.pg_map[a].to_numpy()
-        ]
+        all_pg_idx = np.r_[all_pg_idx, model.pg_map[a].to_numpy()]
     all_pg_idx = all_pg_idx.astype(int)
     return cp.sum((model.x_max[all_pg_idx] - xk[all_pg_idx]) ** 2)
 
 
-def cp_obj_curtail_lp(
-    model: LinDistBase, xk: cp.Variable, **kwargs
-) -> cp.Expression:
+def cp_obj_curtail_lp(model: LinDistBase, xk: cp.Variable, **kwargs) -> cp.Expression:
     """
     Objective function to minimize curtailment of DERs.
     Min sum((P_der_max - P_der)^2)
@@ -330,10 +315,7 @@ def cp_obj_curtail_lp(
     for a in "abc":
         if not model.phase_exists(a):
             continue
-        all_pg_idx = np.r_[
-            all_pg_idx,
-            model.pg_map[a].to_numpy()
-        ]
+        all_pg_idx = np.r_[all_pg_idx, model.pg_map[a].to_numpy()]
     all_pg_idx = all_pg_idx.astype(int)
     return cp.sum((model.x_max[all_pg_idx] - xk[all_pg_idx]))
 
@@ -524,7 +506,12 @@ def lp_solve(
         c = np.zeros(model.n_x)
     tic = perf_counter()
     res = linprog(
-        c, A_eq=csr_array(model.a_eq), b_eq=model.b_eq.flatten(), A_ub=model.a_ub, b_ub=model.b_ub, bounds=model.bounds
+        c,
+        A_eq=csr_array(model.a_eq),
+        b_eq=model.b_eq.flatten(),
+        A_ub=model.a_ub,
+        b_ub=model.b_ub,
+        bounds=model.bounds,
     )
     if not res.success:
         raise ValueError(res.message)
@@ -532,12 +519,14 @@ def lp_solve(
     res["runtime"] = runtime
     return res
 
+
 def pyomo_solve(
     model: LinDistBase,
     obj_func: Callable,
     **kwargs,
 ) -> OptimizeResult:
     import pyomo.environ as pe
+
     m = model
     tic = perf_counter()
     solver = kwargs.get("solver", "ipopt")
@@ -558,12 +547,22 @@ def pyomo_solve(
 
     def equality_rule(_cm, i):
         if model.a_eq[[i], :].nnz > 0:
-            return model.b_eq[i] == sum(_cm.xk[j]*model.a_eq[i, j] for j in range(model.n_x) if model.a_eq[i, j])
+            return model.b_eq[i] == sum(
+                _cm.xk[j] * model.a_eq[i, j]
+                for j in range(model.n_x)
+                if model.a_eq[i, j]
+            )
         return pe.Constraint.Skip
+
     def inequality_rule(_cm, i):
         if model.a_ub[[i], :].nnz > 0:
-            return model.b_ub[i] >= sum(_cm.xk[j]*model.a_ub[i, j] for j in range(model.n_x) if model.a_ub[i, j])
+            return model.b_ub[i] >= sum(
+                _cm.xk[j] * model.a_ub[i, j]
+                for j in range(model.n_x)
+                if model.a_ub[i, j]
+            )
         return pe.Constraint.Skip
+
     cm.equality = pe.Constraint(cm.n_xk, rule=equality_rule)
     if model.a_ub.shape[0] != 0:
         cm.ineq_set = pe.RangeSet(0, model.a_ub.shape[0] - 1)

@@ -8,6 +8,7 @@ from scipy.sparse import csr_array, vstack
 from distopf.base import LinDistBase
 from distopf.utils import get
 
+
 class LinDistModelCapMI(LinDistBase):
     """
     LinDistFlow Model with support for capacitor bank control.

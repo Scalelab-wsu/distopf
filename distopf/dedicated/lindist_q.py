@@ -42,7 +42,9 @@ class LinDistModelQ(LinDistModelPF):
         cap_data: pd.DataFrame = None,
         reg_data: pd.DataFrame = None,
     ):
-        DeprecationWarning("LinDistModelQ is deprecated. Use LinDistModelQFast instead.")
+        DeprecationWarning(
+            "LinDistModelQ is deprecated. Use LinDistModelQFast instead."
+        )
         super().__init__(
             branch_data, bus_data, gen_data, cap_data=cap_data, reg_data=reg_data
         )

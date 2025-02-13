@@ -15,6 +15,7 @@ from distopf.utils import (
     get,
 )
 
+
 class BaseModel:
     """
     LinDistFlow Model base class.
@@ -378,8 +379,8 @@ class LinDistBase(BaseModel):
             p_out = self.gen[f"p{a}"]
             q_max = ((s_rated**2) - (p_out**2)) ** (1 / 2)
             q_min = -q_max
-            q_max_manual = self.gen.get(f"q{a}_max", np.ones_like(q_min)*100e3)
-            q_min_manual = self.gen.get(f"q{a}_min", np.ones_like(q_min)*-100e3)
+            q_max_manual = self.gen.get(f"q{a}_max", np.ones_like(q_min) * 100e3)
+            q_min_manual = self.gen.get(f"q{a}_min", np.ones_like(q_min) * -100e3)
             for j in self.gen_buses[a]:
                 mode = self.gen.loc[j, "control_variable"]
                 pg = self.idx("pg", j, a)
@@ -579,7 +580,7 @@ class LinDistBase(BaseModel):
             q_load_nom = self.bus[f"ql_{a}"][j]
         if self.bus.bus_type[j] != opf.PQ_FREE:
             # Set loads model to power flow equation
-            a_eq[pij, vj] =  -(self.bus.cvr_p[j] / 2) * p_load_nom
+            a_eq[pij, vj] = -(self.bus.cvr_p[j] / 2) * p_load_nom
             b_eq[pij] = (1 - (self.bus.cvr_p[j] / 2)) * p_load_nom
             a_eq[qij, vj] = -(self.bus.cvr_q[j] / 2) * q_load_nom
             b_eq[qij] = (1 - (self.bus.cvr_q[j] / 2)) * q_load_nom
@@ -619,12 +620,12 @@ class LinDistBase(BaseModel):
         """
         n_inequalities = 5
         n_rows_ineq = n_inequalities * (
-            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0])*3
+            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3
         )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
-        ineq = list(range(n_inequalities)) # initialize equation indices
+        ineq = list(range(n_inequalities))  # initialize equation indices
         for j in self.gen.index:
             for a in "abc":
                 if not self.phase_exists(a, j):
@@ -634,11 +635,11 @@ class LinDistBase(BaseModel):
                 pg = self.idx("pg", j, a)
                 qg = self.idx("qg", j, a)
                 s_rated = self.gen.at[j, f"s{a}_max"]
-                coef = sqrt(3)/3  # ~=0.5774
+                coef = sqrt(3) / 3  # ~=0.5774
                 # Right half plane. Positive P
                 # limit for small +P and large +Q
                 a_ineq[ineq[0], pg] = 0
-                a_ineq[ineq[0], qg] = 2*coef
+                a_ineq[ineq[0], qg] = 2 * coef
                 b_ineq[ineq[0]] = s_rated
                 # limit for large +P and small +Q
                 a_ineq[ineq[1], pg] = 1
@@ -650,7 +651,7 @@ class LinDistBase(BaseModel):
                 b_ineq[ineq[2]] = s_rated
                 # limit for small +P and large -Q
                 a_ineq[ineq[3], pg] = 0
-                a_ineq[ineq[3], qg] = -2*coef
+                a_ineq[ineq[3], qg] = -2 * coef
                 b_ineq[ineq[3]] = s_rated
                 # limit to right half plane
                 a_ineq[ineq[4], pg] = -1
@@ -669,7 +670,7 @@ class LinDistBase(BaseModel):
         n_inequalities = 5
 
         n_rows_ineq = n_inequalities * (
-                len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3
+            len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3
         )
         n_rows_ineq = max(n_rows_ineq, 1)
         a_ineq = zeros((n_rows_ineq, self.n_x))
@@ -752,7 +753,8 @@ class LinDistBase(BaseModel):
 
     def get_apparent_power_flows(self, x):
         s_df = pd.DataFrame(
-            columns=["fb", "tb", "from_name", "to_name", "a", "b", "c"], index=range(2, self.nb + 1)
+            columns=["fb", "tb", "from_name", "to_name", "a", "b", "c"],
+            index=range(2, self.nb + 1),
         )
         s_df["a"] = s_df["a"].astype(complex)
         s_df["b"] = s_df["b"].astype(complex)
@@ -793,11 +795,21 @@ class LinDistBase(BaseModel):
                 if not self.phase_exists(a, j):
                     continue
                 if bus_data is not None:
-                    self._a_eq, self._b_eq = self.add_swing_voltage_model(self.a_eq, self.b_eq, j, a)
-                    self._a_eq, self._b_eq = self.add_load_model(self.a_eq, self.b_eq, j, a)
+                    self._a_eq, self._b_eq = self.add_swing_voltage_model(
+                        self.a_eq, self.b_eq, j, a
+                    )
+                    self._a_eq, self._b_eq = self.add_load_model(
+                        self.a_eq, self.b_eq, j, a
+                    )
                 if gen_data is not None:
-                    self._a_eq, self._b_eq = self.add_generator_model(self.a_eq, self.b_eq, j, a)
+                    self._a_eq, self._b_eq = self.add_generator_model(
+                        self.a_eq, self.b_eq, j, a
+                    )
                 if cap_data is not None:
-                    self._a_eq, self._b_eq = self.add_capacitor_model(self.a_eq, self.b_eq, j, a)
+                    self._a_eq, self._b_eq = self.add_capacitor_model(
+                        self.a_eq, self.b_eq, j, a
+                    )
                 if reg_data is not None:
-                    self._a_eq, self._b_eq = self.add_regulator_model(self.a_eq, self.b_eq, j, a)
+                    self._a_eq, self._b_eq = self.add_regulator_model(
+                        self.a_eq, self.b_eq, j, a
+                    )

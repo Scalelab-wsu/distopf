@@ -231,15 +231,29 @@ class TestModelConsistency(unittest.TestCase):
 
             _ = m1.a_eq, mf.a_eq, m2.a_eq, m3.a_eq, m4.a_eq, m5.a_eq
             result1 = opf.multiperiod.opf_solver_multi.cvxpy_solve(
-                m1, opf.multiperiod.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0]
+                m1,
+                opf.multiperiod.cp_obj_target_p_3ph,
+                solver="CLARABEL",
+                target=[0, 0, 0],
             )
             resultf = opf.multiperiod.opf_solver_multi.cvxpy_solve(
-                mf, opf.multiperiod.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0]
+                mf,
+                opf.multiperiod.cp_obj_target_p_3ph,
+                solver="CLARABEL",
+                target=[0, 0, 0],
             )
-            result2 = opf.cvxpy_solve(m2, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0])
-            result3 = opf.cvxpy_solve(m3, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0])
-            result4 = opf.cvxpy_solve(m4, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0])
-            result5 = opf.cvxpy_solve(m5, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0,0,0])
+            result2 = opf.cvxpy_solve(
+                m2, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0, 0, 0]
+            )
+            result3 = opf.cvxpy_solve(
+                m3, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0, 0, 0]
+            )
+            result4 = opf.cvxpy_solve(
+                m4, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0, 0, 0]
+            )
+            result5 = opf.cvxpy_solve(
+                m5, opf.cp_obj_target_p_3ph, solver="CLARABEL", target=[0, 0, 0]
+            )
 
             print(start_time)
             print(f"multi:  objective={result1.fun}\t in {result1.runtime}s")

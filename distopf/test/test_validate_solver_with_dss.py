@@ -65,8 +65,8 @@ def max_flow_difference(s1: pd.DataFrame, s2: pd.DataFrame) -> float:
     q1["q1"] = q1["q1"].astype(float)
     q2["q2"] = q2["q2"].astype(float)
     q = pd.merge(q1, q2, on=["name", "phase"])
-    q.loc[q.q1<1e-7, "q1"] = np.nan
-    q.loc[q.q2<1e-7, "q2"] = np.nan
+    q.loc[q.q1 < 1e-7, "q1"] = np.nan
+    q.loc[q.q2 < 1e-7, "q2"] = np.nan
     q["d"] = q.q1 - q.q2
     q["r"] = q.d / q.q2
     return p.d.abs().max(), q.d.abs().max()
@@ -119,7 +119,9 @@ def add_generators_from_gen_data(dss_parser: DSSParser, gen_data: pd.DataFrame):
         qb = gen_data.loc[i, "qb"] * s_base / 1000
         qc = gen_data.loc[i, "qc"] * s_base / 1000
         if f"{bus_name}" not in dss_parser.bus_names:
-            raise ValueError(f"{bus_name} is not a valid bus. Valid bus names include: {dss_parser.bus_names}")
+            raise ValueError(
+                f"{bus_name} is not a valid bus. Valid bus names include: {dss_parser.bus_names}"
+            )
         dss_parser.dss.Text.Command(
             f"New Generator.gen{bus_name}a phases=1 Bus1={bus_name}.1 kV=2.4  kW={pa}  kvar={qa} model=7"
         )
@@ -132,7 +134,9 @@ def add_generators_from_gen_data(dss_parser: DSSParser, gen_data: pd.DataFrame):
     dss_parser.update()
 
 
-def add_generators_from_results(dss_parser: DSSParser, p_gens: pd.DataFrame, q_gens: pd.DataFrame):
+def add_generators_from_results(
+    dss_parser: DSSParser, p_gens: pd.DataFrame, q_gens: pd.DataFrame
+):
     for i in p_gens.index:
         bus_id = int(p_gens.loc[i, "id"])
         bus_name = p_gens.loc[i, "name"]
@@ -145,7 +149,9 @@ def add_generators_from_results(dss_parser: DSSParser, p_gens: pd.DataFrame, q_g
         qb = q_gens.loc[i, "b"] * 1e6 / 1000
         qc = q_gens.loc[i, "c"] * 1e6 / 1000
         if f"{bus_name}" not in dss_parser.bus_names:
-            raise ValueError(f"{bus_name} is not a valid bus. Valid bus names include: {dss_parser.bus_names}")
+            raise ValueError(
+                f"{bus_name} is not a valid bus. Valid bus names include: {dss_parser.bus_names}"
+            )
         dss_parser.dss.Text.Command(
             f"New Generator.gen{bus_name}a phases=1 Bus1={bus_name}.1 kV=2.4  kW={pa}  kvar={qa} model=7"
         )
@@ -187,7 +193,9 @@ def assert_results_equal(model_new, model_old, res_new, res_old):
     assert np.allclose(
         gen_old.loc[:, ["a", "b", "c"]].astype(float).to_numpy(),
         gen_new.loc[:, ["a", "b", "c"]].astype(float).to_numpy(),
-        rtol=1.0e-5, atol=1.0e-9, equal_nan=True
+        rtol=1.0e-5,
+        atol=1.0e-9,
+        equal_nan=True,
     )
     assert abs(res_new.fun - res_old.fun) <= 1.0e-6
     assert np.allclose(

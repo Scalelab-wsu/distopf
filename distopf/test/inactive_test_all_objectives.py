@@ -7,7 +7,6 @@ do not represent a true problem.
 A better test would validate each model against open dss.
 """
 
-
 import unittest
 from pathlib import Path
 
@@ -84,7 +83,9 @@ class TestObjectives(unittest.TestCase):
         gen_data.loc[:, ["pa", "pb", "pc"]] *= 3
         gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= 3
 
-        model_new = LinDistModelQGen(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelQGen(
+            branch_data, bus_data, gen_data, cap_data, reg_data
+        )
         powerdata = pd.read_csv(legacy_powerdata_path, header=0)
         model_old = QModel(
             branch_data,
@@ -114,7 +115,9 @@ class TestObjectives(unittest.TestCase):
         gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= p_rating_mult
 
         bus_data.loc[bus_data.bus_type == "SWING", ["v_a", "v_b", "v_c"]] = 1.0
-        model_new = LinDistModelQGen(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelQGen(
+            branch_data, bus_data, gen_data, cap_data, reg_data
+        )
         powerdata = pd.read_csv(legacy_powerdata_path, header=0)
         model_old = QModel(
             branch_data,
@@ -152,7 +155,9 @@ class TestObjectives(unittest.TestCase):
         gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= p_rating_mult
 
         bus_data.loc[bus_data.bus_type == "SWING", ["v_a", "v_b", "v_c"]] = 1.0
-        model_new = LinDistModelQGen(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelQGen(
+            branch_data, bus_data, gen_data, cap_data, reg_data
+        )
         powerdata = pd.read_csv(legacy_powerdata_path, header=0)
         model_old = QModel(
             branch_data,
@@ -190,7 +195,9 @@ class TestObjectives(unittest.TestCase):
         bus_data.loc[:, ["pl_a", "pl_b", "pl_c"]] *= 0.5
         bus_data.loc[:, ["ql_a", "ql_b", "ql_c"]] *= 0.5
 
-        model_new = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelPGen(
+            branch_data, bus_data, gen_data, cap_data, reg_data
+        )
         powerdata = pd.read_csv(legacy_powerdata_path)
         model_old = PModel(
             branch_data,
@@ -232,7 +239,9 @@ class TestObjectives(unittest.TestCase):
         gen_data.loc[:, ["sa_max", "sb_max", "sc_max"]] *= p_rating_mult
         bus_data.loc[:, ["pl_a", "pl_b", "pl_c"]] *= load_mult
         bus_data.loc[:, ["ql_a", "ql_b", "ql_c"]] *= load_mult
-        model_new = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelPGen(
+            branch_data, bus_data, gen_data, cap_data, reg_data
+        )
         powerdata = pd.read_csv(legacy_powerdata_path)
         model_old = PModel(
             branch_data,
@@ -270,7 +279,9 @@ class TestObjectives(unittest.TestCase):
         gen_data.control_variable = "P"
         bus_data.loc[:, ["pl_a", "pl_b", "pl_c"]] *= 0.1
         bus_data.loc[:, ["ql_a", "ql_b", "ql_c"]] *= 0.1
-        model_new = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelPGen(
+            branch_data, bus_data, gen_data, cap_data, reg_data
+        )
         powerdata = pd.read_csv(legacy_powerdata_path)
         model_old = PModel(
             branch_data,
@@ -300,7 +311,9 @@ class TestObjectives(unittest.TestCase):
         gen_data.control_variable = "P"
         bus_data.loc[:, ["pl_a", "pl_b", "pl_c"]] *= 0.1
         bus_data.loc[:, ["ql_a", "ql_b", "ql_c"]] *= 0.1
-        model_new = LinDistModelPGen(branch_data, bus_data, gen_data, cap_data, reg_data)
+        model_new = LinDistModelPGen(
+            branch_data, bus_data, gen_data, cap_data, reg_data
+        )
         powerdata = pd.read_csv(legacy_powerdata_path)
         model_old = PModel(
             branch_data,
