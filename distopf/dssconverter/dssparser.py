@@ -308,7 +308,7 @@ class DSSParser:
 
         else:
             # for other than 3 phases
-            raise NotImplemented(
+            raise NotImplementedError(
                 "Parsing reactors with phases other than 3 not implemented"
             )
             # active_phases = [
