@@ -4,7 +4,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from numpy import sqrt, zeros
-from scipy.sparse import csr_array, vstack
+from scipy.sparse import csr_array, lil_array, vstack
 from distopf.base import LinDistBase
 from distopf.utils import get
 
@@ -69,7 +69,7 @@ class LinDistModelCapMI(LinDistBase):
             return self.uc_map[phase].get(node_j, [])
         return None
 
-    def add_capacitor_model(self, a_eq, b_eq, j, a):
+    def add_capacitor_model(self, a_eq: csr_array, b_eq, j, a) -> (csr_array, np.ndarray):
         qij = self.idx("qij", j, a)
         q_cap_nom = 0
         if self.cap is not None:
@@ -82,7 +82,7 @@ class LinDistModelCapMI(LinDistBase):
         a_eq[qc, zc] = -q_cap_nom
         return a_eq, b_eq
 
-    def create_capacitor_constraints(self):
+    def create_capacitor_constraints(self) -> (csr_array, np.ndarray):
         """
         Create inequality constraints for the optimization problem.
         """
@@ -93,7 +93,7 @@ class LinDistModelCapMI(LinDistBase):
             + len(self.cap_buses["b"])
             + len(self.cap_buses["c"])
         )
-        a_ineq = zeros((n_rows_ineq, self.n_x))
+        a_ineq = lil_array((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         ineq1 = 0
         ineq2 = 1
@@ -119,9 +119,9 @@ class LinDistModelCapMI(LinDistBase):
                 ineq3 += 4
                 ineq4 += 4
 
-        return a_ineq, b_ineq
+        return csr_array(a_ineq), b_ineq
 
-    def create_inequality_constraints(self):
+    def create_inequality_constraints(self) -> (csr_array, np.ndarray):
         a_cap, b_cap = self.create_capacitor_constraints()
         a_inv, b_inv = self.create_octagon_constraints()
         a_ub = vstack([a_cap, a_inv])

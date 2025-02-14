@@ -30,7 +30,7 @@ class LinDistModelCapacitorRegulatorMI(opf.LinDistModelCapMI):
         self.b_i = np.arange(0.9, 1.1, 0.00625)
         self.g_reg = None
 
-    def add_regulator_model(self, a_eq, b_eq, j, a):
+    def add_regulator_model(self, a_eq, b_eq, j, a) -> (csr_array, np.ndarray):
         return a_eq, b_eq
 
     def cvxpy_regulator_mi_constraints(self):

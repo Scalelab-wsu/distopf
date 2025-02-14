@@ -29,7 +29,7 @@ class TestPlots(unittest.TestCase):
         pg = m.get_p_gens(result.x)
         qg = m.get_q_gens(result.x)
         fig = opf.plot_network(m, v, s, pg, qg)
-        fig.show()
+        # fig.show()
 
     def test_plot_ders(self):
         base_path = CASES_DIR / "csv/ieee123_30der"
@@ -51,7 +51,7 @@ class TestPlots(unittest.TestCase):
         result = opf.cvxpy_solve(m, opf.cp_obj_loss)
         qg = m.get_q_gens(result.x)
         fig = opf.plot_ders(qg)
-        fig.show()
+        # fig.show()
 
     def test_plot_voltages(self):
         base_path = CASES_DIR / "csv/ieee123_30der"
@@ -73,7 +73,7 @@ class TestPlots(unittest.TestCase):
         result = opf.cvxpy_solve(m, opf.cp_obj_loss)
         v = m.get_voltages(result.x)
         fig = opf.plot_voltages(v)
-        fig.show()
+        # fig.show()
 
     def test_compare_voltages(self):
         base_path = CASES_DIR / "csv/ieee123_30der"
@@ -105,7 +105,7 @@ class TestPlots(unittest.TestCase):
         v = m.get_voltages(result.x)
         v2 = m.get_voltages(result2.x)
         fig = opf.compare_voltages(v, v2)
-        fig.show()
+        # fig.show()
 
     def test_voltage_differences(self):
         base_path = CASES_DIR / "csv/ieee123_30der"
@@ -137,7 +137,7 @@ class TestPlots(unittest.TestCase):
         v = m.get_voltages(result.x)
         v2 = m.get_voltages(result2.x)
         fig = opf.voltage_differences(v, v2)
-        fig.show()
+        # fig.show()
 
     def test_plot_power_flows(self):
         base_path = CASES_DIR / "csv/ieee123_30der"
@@ -159,7 +159,7 @@ class TestPlots(unittest.TestCase):
         result = opf.cvxpy_solve(m, opf.cp_obj_loss)
         s = m.get_apparent_power_flows(result.x)
         fig = opf.plot_power_flows(s)
-        fig.show()
+        # fig.show()
 
     def test_compare_flows(self):
         base_path = CASES_DIR / "csv/ieee123_30der"
@@ -191,8 +191,9 @@ class TestPlots(unittest.TestCase):
         s = m.get_apparent_power_flows(result.x)
         s2 = m.get_apparent_power_flows(result2.x)
         fig = opf.compare_flows(s, s2)
-        fig.show()
+        # fig.show()
 
+    # unittest.skip()
     def test_polar(self):
         base_path = CASES_DIR / "csv/ieee123_30der"
         branch_data = pd.read_csv(base_path / "branch_data.csv")
@@ -214,4 +215,4 @@ class TestPlots(unittest.TestCase):
         pg = m.get_p_gens(result.x)
         qg = m.get_q_gens(result.x)
         fig = opf.plot_polar(pg, qg)
-        fig.show()
+        # fig.show()
