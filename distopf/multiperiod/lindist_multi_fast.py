@@ -740,7 +740,7 @@ class LinDistModelMultiFast:
                     ineq5 += 6
                     ineq6 += 6
 
-        return vstack(a_ineq), b_ineq
+        return csr_array(a_ineq), b_ineq
 
     def create_octagon_constraints(self) -> (csr_array, np.ndarray):
         """
