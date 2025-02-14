@@ -468,7 +468,7 @@ class LinDistModelMultiFast:
         n_rows = self.n_x
         n_cols = self.n_x
         # Aeq has the same number of rows as equations with a column for each x
-        a_eq = zeros((n_rows, n_cols))
+        a_eq = lil_array((n_rows, n_cols))
         b_eq = zeros(n_rows)
         for t in range(self.start_step, self.start_step + self.n_steps):
             for j in range(1, self.nb):
