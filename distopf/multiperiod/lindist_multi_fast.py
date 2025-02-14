@@ -4,7 +4,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from numpy import sqrt, zeros
-from scipy.sparse import csr_array
+from scipy.sparse import csr_array, lil_array, vstack
 import distopf as opf
 from distopf.utils import (
     handle_branch_input,
@@ -463,7 +463,7 @@ class LinDistModelMultiFast:
             return self.x_maps[t][phase].shape[0] > 0
         return len(self.idx("bj", index, phase, t=t)) > 0
 
-    def create_model(self):
+    def create_model(self) -> (csr_array, np.ndarray):
         # ########## Aeq and Beq Formation ###########
         n_rows = self.n_x
         n_cols = self.n_x
@@ -488,7 +488,7 @@ class LinDistModelMultiFast:
                     a_eq, b_eq = self.add_battery_model(a_eq, b_eq, j, a, t=t)
         return csr_array(a_eq), b_eq
 
-    def add_power_flow_model(self, a_eq, b_eq, j, phase, t=0):
+    def add_power_flow_model(self, a_eq, b_eq, j, phase, t=0) -> (csr_array, np.ndarray):
         if t < self.start_step:
             t = self.start_step
         pij = self.idx("pij", j, phase, t=t)
@@ -513,7 +513,7 @@ class LinDistModelMultiFast:
         a_eq[qij, qc] = 1
         return a_eq, b_eq
 
-    def add_voltage_drop_model(self, a_eq, b_eq, j, a, b, c, t=0):
+    def add_voltage_drop_model(self, a_eq, b_eq, j, a, b, c, t=0) -> (csr_array, np.ndarray):
         if t < self.start_step:
             t = self.start_step
         if self.reg is not None:
@@ -557,7 +557,7 @@ class LinDistModelMultiFast:
             a_eq[vj, qijc] = -x[ac][i, j] + sqrt(3) * r[ac][i, j]
         return a_eq, b_eq
 
-    def add_regulator_model(self, a_eq, b_eq, j, a, t=0):
+    def add_regulator_model(self, a_eq, b_eq, j, a, t=0) -> (csr_array, np.ndarray):
         if t < self.start_step:
             t = self.start_step
         i = self.idx("bi", j, a, t=t)[
@@ -574,7 +574,7 @@ class LinDistModelMultiFast:
                 return a_eq, b_eq
         return a_eq, b_eq
 
-    def add_swing_voltage_model(self, a_eq, b_eq, j, a, t=0):
+    def add_swing_voltage_model(self, a_eq, b_eq, j, a, t=0) -> (csr_array, np.ndarray):
         if t < self.start_step:
             t = self.start_step
         i = self.idx("bi", j, a, t=t)[
@@ -587,7 +587,7 @@ class LinDistModelMultiFast:
             b_eq[vi] = self.bus.at[i, f"v_{a}"] ** 2
         return a_eq, b_eq
 
-    def add_generator_model(self, a_eq, b_eq, j, phase, t=0):
+    def add_generator_model(self, a_eq, b_eq, j, phase, t=0) -> (csr_array, np.ndarray):
         if t < self.start_step:
             t = self.start_step
         a = phase
@@ -608,7 +608,7 @@ class LinDistModelMultiFast:
             b_eq[qg] = q_gen_nom
         return a_eq, b_eq
 
-    def add_load_model(self, a_eq, b_eq, j, phase, t=0):
+    def add_load_model(self, a_eq, b_eq, j, phase, t=0) -> (csr_array, np.ndarray):
         if t < self.start_step:
             t = self.start_step
 
@@ -629,7 +629,7 @@ class LinDistModelMultiFast:
             b_eq[qij] = (1 - (self.bus.cvr_q[j] / 2)) * q_load_nom
         return a_eq, b_eq
 
-    def add_capacitor_model(self, a_eq, b_eq, j, phase, t=0):
+    def add_capacitor_model(self, a_eq, b_eq, j, phase, t=0) -> (csr_array, np.ndarray):
         if t < self.start_step:
             t = self.start_step
         q_cap_nom = 0
@@ -642,7 +642,7 @@ class LinDistModelMultiFast:
         a_eq[qc, vj] = -q_cap_nom
         return a_eq, b_eq
 
-    def add_battery_model(self, a_eq, b_eq, j, phase, t=0):
+    def add_battery_model(self, a_eq, b_eq, j, phase, t=0) -> (csr_array, np.ndarray):
         if j not in self.bat.index:
             return a_eq, b_eq
         if t < self.start_step:
@@ -664,12 +664,12 @@ class LinDistModelMultiFast:
             a_eq[soc_j, soc_prev] = -1
         return a_eq, b_eq
 
-    def create_battery_inequality_constraints(self):
+    def create_battery_inequality_constraints(self) -> (csr_array, np.ndarray):
         # ########## Aineq and Bineq Formation ###########
         n_inequalities = 1
         n_rows_ineq = n_inequalities * self.n_bats * self.n_steps
         n_rows_ineq = max(n_rows_ineq, 1)
-        a_ineq = zeros((n_rows_ineq, self.n_x))
+        a_ineq = lil_array((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         # ineq1 = 0
         # for t in range(self.start_step, self.start_step + self.n_steps):
@@ -683,9 +683,9 @@ class LinDistModelMultiFast:
         #             a_ineq[ineq1, charge_j] = -1
         #             b_ineq[ineq1] = self.bat[f"hmax_{a}"].get(j, 0)
         #             ineq1 += 1
-        return a_ineq, b_ineq
+        return csr_array(a_ineq), b_ineq
 
-    def create_hexagon_constraints(self):
+    def create_hexagon_constraints(self) -> (csr_array, np.ndarray):
         """
         Create inequality constraints for the optimization problem.
         """
@@ -698,7 +698,7 @@ class LinDistModelMultiFast:
             * self.n_steps
         )
         n_rows_ineq = max(n_rows_ineq, 1)
-        a_ineq = zeros((n_rows_ineq, self.n_x))
+        a_ineq = lil_array((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         ineq1 = 0
         ineq2 = 1
@@ -740,9 +740,9 @@ class LinDistModelMultiFast:
                     ineq5 += 6
                     ineq6 += 6
 
-        return a_ineq, b_ineq
+        return vstack(a_ineq), b_ineq
 
-    def create_octagon_constraints(self):
+    def create_octagon_constraints(self) -> (csr_array, np.ndarray):
         """
         Use an octagon to approximate the circular inequality constraint of an inverter.
         """
@@ -756,7 +756,7 @@ class LinDistModelMultiFast:
             * self.n_steps
         )
         n_rows_ineq = max(n_rows_ineq, 1)
-        a_ineq = zeros((n_rows_ineq, self.n_x))
+        a_ineq = lil_array((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         ineq = list(range(n_inequalities))
         for t in range(self.start_step, self.start_step + self.n_steps):
@@ -793,12 +793,12 @@ class LinDistModelMultiFast:
 
                     for n_ineq in range(len(ineq)):
                         ineq[n_ineq] += len(ineq)
-        return a_ineq, b_ineq
+        return csr_array(a_ineq), b_ineq
 
-    def create_inequality_constraints(self):
+    def create_inequality_constraints(self) -> (csr_array, np.ndarray):
         a_bat, b_bat = self.create_battery_inequality_constraints()
         a_inv, b_inv = self.create_octagon_constraints()
-        a_ub = np.r_[a_bat, a_inv]
+        a_ub = vstack([a_bat, a_inv])
         b_ub = np.r_[b_bat, b_inv]
         return csr_array(a_ub), b_ub
 

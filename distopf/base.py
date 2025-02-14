@@ -4,7 +4,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from numpy import sqrt, zeros
-from scipy.sparse import csr_array
+from scipy.sparse import csr_array, lil_array
 import distopf as opf
 from distopf.utils import (
     handle_branch_input,
@@ -445,12 +445,12 @@ class LinDistBase(BaseModel):
         return None
 
     @cache
-    def phase_exists(self, phase, index: int = None):
+    def phase_exists(self, phase, index: int = None) -> bool:
         if index is None:
             return self.x_maps[phase].shape[0] > 0
         return len(self.idx("bj", index, phase)) > 0
 
-    def create_model(self):
+    def create_model(self) -> (csr_array, np.ndarray):
         """
         Constructs the equality constraint matrices for the linear optimization
         problem based on power flow equations.
@@ -467,7 +467,7 @@ class LinDistBase(BaseModel):
         n_rows = self.n_x
         n_cols = self.n_x
         # Aeq has the same number of rows as equations with a column for each x
-        a_eq = zeros((n_rows, n_cols))
+        a_eq = lil_array((n_rows, n_cols))
         b_eq = zeros(n_rows)
         for j in range(1, self.nb):
             for ph in ["abc", "bca", "cab"]:
@@ -483,7 +483,7 @@ class LinDistBase(BaseModel):
                 a_eq, b_eq = self.add_capacitor_model(a_eq, b_eq, j, a)
         return csr_array(a_eq), b_eq
 
-    def add_power_flow_model(self, a_eq, b_eq, j, phase):
+    def add_power_flow_model(self, a_eq: lil_array, b_eq, j, phase) -> (csr_array, np.ndarray):
         pij = self.idx("pij", j, phase)
         qij = self.idx("qij", j, phase)
         pjk = self.idx("pjk", j, phase)
@@ -496,7 +496,7 @@ class LinDistBase(BaseModel):
         a_eq[qij, qjk] = -1
         return a_eq, b_eq
 
-    def add_voltage_drop_model(self, a_eq, b_eq, j, a, b, c):
+    def add_voltage_drop_model(self, a_eq: lil_array, b_eq, j, a, b, c) -> (csr_array, np.ndarray):
         if self.reg is not None:
             if j in self.reg.tb:
                 return a_eq, b_eq
@@ -527,7 +527,7 @@ class LinDistBase(BaseModel):
             a_eq[vj, qijc] = -x[ac][i, j] + sqrt(3) * r[ac][i, j]
         return a_eq, b_eq
 
-    def add_regulator_model(self, a_eq, b_eq, j, a):
+    def add_regulator_model(self, a_eq: lil_array, b_eq, j, a) -> (csr_array, np.ndarray):
         i = self.idx("bi", j, a)[0]  # get the upstream node, i, on branch from i to j
         vi = self.idx("v", i, a)
         vj = self.idx("v", j, a)
@@ -540,7 +540,7 @@ class LinDistBase(BaseModel):
                 return a_eq, b_eq
         return a_eq, b_eq
 
-    def add_swing_voltage_model(self, a_eq, b_eq, j, a):
+    def add_swing_voltage_model(self, a_eq: lil_array, b_eq, j, a) -> (csr_array, np.ndarray):
         i = self.idx("bi", j, a)[0]  # get the upstream node, i, on branch from i to j
         vi = self.idx("v", i, a)
         # Set V equation variable coefficients in a_eq and constants in b_eq
@@ -549,7 +549,7 @@ class LinDistBase(BaseModel):
             b_eq[vi] = self.bus.at[i, f"v_{a}"] ** 2
         return a_eq, b_eq
 
-    def add_generator_model(self, a_eq, b_eq, j, a):
+    def add_generator_model(self, a_eq: lil_array, b_eq, j, a) -> (csr_array, np.ndarray):
         p_gen_nom, q_gen_nom = 0, 0
         if self.gen is not None:
             p_gen_nom = get(self.gen[f"p{a}"], j, 0)
@@ -570,7 +570,7 @@ class LinDistBase(BaseModel):
             b_eq[qg] = q_gen_nom
         return a_eq, b_eq
 
-    def add_load_model(self, a_eq, b_eq, j, a):
+    def add_load_model(self, a_eq: lil_array, b_eq, j, a) -> (csr_array, np.ndarray):
         pij = self.idx("pij", j, a)
         qij = self.idx("qij", j, a)
         vj = self.idx("v", j, a)
@@ -586,7 +586,7 @@ class LinDistBase(BaseModel):
             b_eq[qij] = (1 - (self.bus.cvr_q[j] / 2)) * q_load_nom
         return a_eq, b_eq
 
-    def add_capacitor_model(self, a_eq, b_eq, j, a):
+    def add_capacitor_model(self, a_eq: lil_array, b_eq, j, a) -> (csr_array, np.ndarray):
         qij = self.idx("qij", j, a)
         q_cap_nom = 0
         if self.cap is not None:
@@ -599,7 +599,7 @@ class LinDistBase(BaseModel):
         a_eq[qc, vj] = -q_cap_nom
         return a_eq, b_eq
 
-    def create_inequality_constraints(self):
+    def create_inequality_constraints(self) -> (csr_array, np.ndarray):
         """
         Constructs the inequality constraint matrices.
         a_ub*x <= b_ub
@@ -614,7 +614,7 @@ class LinDistBase(BaseModel):
         a_ub, b_ub = self.create_octagon_constraints()
         return csr_array(a_ub), b_ub
 
-    def create_hexagon_constraints(self):
+    def create_hexagon_constraints(self) -> (csr_array, np.ndarray):
         """
         Use an octagon to approximate the circular inequality constraint of an inverter.
         """
@@ -623,7 +623,7 @@ class LinDistBase(BaseModel):
             len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3
         )
         n_rows_ineq = max(n_rows_ineq, 1)
-        a_ineq = zeros((n_rows_ineq, self.n_x))
+        a_ineq = lil_array((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         ineq = list(range(n_inequalities))  # initialize equation indices
         for j in self.gen.index:
@@ -659,9 +659,9 @@ class LinDistBase(BaseModel):
                 # increment equation indices
                 for n_ineq in range(len(ineq)):
                     ineq[n_ineq] += len(ineq)
-        return a_ineq, b_ineq
+        return csr_array(a_ineq), b_ineq
 
-    def create_octagon_constraints(self):
+    def create_octagon_constraints(self) -> (csr_array, np.ndarray):
         """
         Use an octagon to approximate the circular inequality constraint of an inverter.
         """
@@ -673,7 +673,7 @@ class LinDistBase(BaseModel):
             len(np.where(self.gen.control_variable == opf.CONTROL_PQ)[0]) * 3
         )
         n_rows_ineq = max(n_rows_ineq, 1)
-        a_ineq = zeros((n_rows_ineq, self.n_x))
+        a_ineq = lil_array((n_rows_ineq, self.n_x))
         b_ineq = zeros(n_rows_ineq)
         ineq = list(range(n_inequalities))
         for j in self.gen.index:
@@ -709,7 +709,7 @@ class LinDistBase(BaseModel):
 
                 for n_ineq in range(len(ineq)):
                     ineq[n_ineq] += len(ineq)
-        return a_ineq, b_ineq
+        return csr_array(a_ineq), b_ineq
 
     def parse_results(self, x, variable_name: str):
         values = pd.DataFrame(columns=["name", "a", "b", "c"])
